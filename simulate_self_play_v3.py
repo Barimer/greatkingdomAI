@@ -21,6 +21,7 @@ def play_single_game_self_play(args):
     move_count = 0
     max_moves = 150
     
+    t0 = time.time()
     while not game.game_over and move_count < max_moves:
         if move_count == 0:
             legal_moves = [m for m in get_legal_moves(game) if m != "pass"]
@@ -38,7 +39,11 @@ def play_single_game_self_play(args):
             game.play_move(move[0], move[1])
             
         move_count += 1
-        
+        # 매 10수마다 간략한 진척 상황 출력 (버퍼링 우회)
+        if move_count % 10 == 0:
+            elapsed_move = time.time() - t0
+            print(f"   [Game {game_idx:03d}] Move {move_count:03d} processed (elapsed: {elapsed_move:.1f}s)", flush=True)
+            
     winner = game.winner
     if winner is None:
         winner = game.check_winner()
@@ -50,6 +55,10 @@ def play_single_game_self_play(args):
             reason = "CAPTURE"
     else:
         reason = "MAX_MOVES"
+        
+    elapsed_game = time.time() - t0
+    # 게임 1판 완료 즉시 상세 로깅
+    print(f"-> [Game {game_idx:03d} Finished] Winner: {winner} | Reason: {reason} | Moves: {move_count} | Time: {elapsed_game:.1f}s", flush=True)
         
     # JSON 파일 포맷 구성
     game_data = {
@@ -151,4 +160,4 @@ def run_self_play_simulation(num_games=500, depth=3):
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
-    run_self_play_simulation(num_games=500, depth=3)
+    run_self_play_simulation(num_games=10, depth=3)
