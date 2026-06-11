@@ -4,7 +4,7 @@ import json
 import time
 
 from engine.game_state import GameState
-from engine.board import BLUE, ORANGE, EMPTY
+from engine.board import BLUE, ORANGE, EMPTY, NEUTRAL
 from ai.minimax import find_best_move
 from engine.territory import calculate_territory
 
@@ -19,6 +19,9 @@ st.set_page_config(
 if "game" not in st.session_state:
     st.session_state.game = GameState()
     st.session_state.game.is_copy = True
+    print("\n[INITIAL STATE] GameState created:")
+    print(st.session_state.game.board.grid)
+    print()
 if "game_moves" not in st.session_state:
     st.session_state.game_moves = []  # 순수 좌표 및 패스 히스토리 [ [r,c], "pass", ... ]
 if "logs" not in st.session_state:
@@ -39,6 +42,9 @@ if "test_records" not in st.session_state:
 def reset_game():
     st.session_state.game = GameState()
     st.session_state.game.is_copy = True
+    print("\n[RESET STATE] GameState created:")
+    print(st.session_state.game.board.grid)
+    print()
     st.session_state.game_moves = []
     st.session_state.logs = ["대국이 새롭게 기동되었습니다. 당신은 BLUE(선공)입니다."]
     # 쿼리 파라미터 초기화
@@ -163,13 +169,21 @@ if not game.game_over and game.current_player == ORANGE:
         st.rerun()
 
 # ----------------- HTML5/CSS3 바둑판 렌더링 -----------------
+# UI 렌더링 직전 보드 셀 정보 콘솔 출력
+print("\n--- UI RENDER BOARD INSPECTION ---")
+for r_inspect in range(9):
+    for c_inspect in range(9):
+        print(r_inspect, c_inspect, board.grid[r_inspect][c_inspect])
+print("-----------------------------------\n")
+
 # 9x9 격자판 데이터 구성
 board_list = []
 for r in range(9):
     row_data = []
     for c in range(9):
         cell_val = board.get(r, c)
-        is_neutral = (r, c) in [(2,4), (4,2), (4,6), (6,4), (4,4)]
+        # 하드코딩 대신 실제 데이터의 NEUTRAL 값을 기반으로 판단
+        is_neutral = (cell_val == NEUTRAL)
         
         # 영토 여부 판단
         # calculate_territory는 전체 맵의 영토 배정을 하지 않고 총합만 리턴할 수 있으므로,
