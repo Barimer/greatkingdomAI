@@ -5,8 +5,11 @@ import time
 
 from engine.game_state import GameState
 from engine.board import BLUE, ORANGE, EMPTY, NEUTRAL
-from ai.minimax import find_best_move
+from ai.minimax import find_best_move, LAST_AI_DECISION
 from engine.territory import calculate_territory
+
+# 디버그 콘솔 출력 여부 플래그
+DEBUG = False
 
 # 페이지 설정
 st.set_page_config(
@@ -19,9 +22,10 @@ st.set_page_config(
 if "game" not in st.session_state:
     st.session_state.game = GameState()
     st.session_state.game.is_copy = True
-    print("\n[INITIAL STATE] GameState created:")
-    print(st.session_state.game.board.grid)
-    print()
+    if DEBUG:
+        print("\n[INITIAL STATE] GameState created:")
+        print(st.session_state.game.board.grid)
+        print()
 if "game_moves" not in st.session_state:
     st.session_state.game_moves = []  # 순수 좌표 및 패스 히스토리 [ [r,c], "pass", ... ]
 if "logs" not in st.session_state:
@@ -42,9 +46,10 @@ if "test_records" not in st.session_state:
 def reset_game():
     st.session_state.game = GameState()
     st.session_state.game.is_copy = True
-    print("\n[RESET STATE] GameState created:")
-    print(st.session_state.game.board.grid)
-    print()
+    if DEBUG:
+        print("\n[RESET STATE] GameState created:")
+        print(st.session_state.game.board.grid)
+        print()
     st.session_state.game_moves = []
     st.session_state.logs = ["대국이 새롭게 기동되었습니다. 당신은 BLUE(선공)입니다."]
     # 쿼리 파라미터 초기화
@@ -145,6 +150,14 @@ st.sidebar.subheader("📜 수순 로그")
 log_text = "\n".join(st.session_state.logs[-15:])
 st.sidebar.text_area("최근 수순 내역", log_text, height=180, disabled=True)
 
+# AI 사고 로그 패널 표시 (콘솔 출력 금지 대응)
+if LAST_AI_DECISION["move"] is not None:
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🤖 AI 사고 분석 로그")
+    st.sidebar.write(f"**AI Move**: `{LAST_AI_DECISION['move']}`")
+    st.sidebar.write(f"**Evaluation**: `{LAST_AI_DECISION['score']:+.2f}`")
+    st.sidebar.write(f"**Depth**: `{LAST_AI_DECISION['depth']}`")
+
 # AI 백그라운드 연산 즉시 기동
 if not game.game_over and game.current_player == ORANGE:
     with st.spinner("🤖 AI가 미니맥스(Depth 3) 수읽기 중..."):
@@ -169,12 +182,13 @@ if not game.game_over and game.current_player == ORANGE:
         st.rerun()
 
 # ----------------- HTML5/CSS3 바둑판 렌더링 -----------------
-# UI 렌더링 직전 보드 셀 정보 콘솔 출력
-print("\n--- UI RENDER BOARD INSPECTION ---")
-for r_inspect in range(9):
-    for c_inspect in range(9):
-        print(r_inspect, c_inspect, board.grid[r_inspect][c_inspect])
-print("-----------------------------------\n")
+# UI 렌더링 직전 보드 셀 정보 콘솔 출력 (DEBUG 모드일 때만 수행)
+if DEBUG:
+    print("\n--- UI RENDER BOARD INSPECTION ---")
+    for r_inspect in range(9):
+        for c_inspect in range(9):
+            print(r_inspect, c_inspect, board.grid[r_inspect][c_inspect])
+    print("-----------------------------------\n")
 
 # 9x9 격자판 데이터 구성
 board_list = []

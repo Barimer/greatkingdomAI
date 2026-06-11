@@ -11,6 +11,9 @@ EXACT = 0
 LOWERBOUND = 1
 UPPERBOUND = 2
 
+# UI 통신용 마지막 AI 의사결정 기록
+LAST_AI_DECISION = {"move": None, "score": 0.0, "depth": 3}
+
 # 성능 측정용 글로벌 메트릭
 STATS = {"nodes_visited": 0, "cutoffs": 0}
 
@@ -133,7 +136,8 @@ def find_best_move(game_state, depth=2):
     top_candidates = move_scores[:10]
 
     # 디버그 상세 로그 출력 (가상 시뮬레이션 복사본이 아닐 때만 출력)
-    if not getattr(game_state, "is_copy", False):
+    # 콘솔 출력 금지 정책 적용 (DEBUG = False로 비활성화)
+    if False:
         player_name = (
             "BLUE (Player 1)"
             if target_player == 1
@@ -157,7 +161,15 @@ def find_best_move(game_state, depth=2):
         best_score = top_candidates[0][1]
         # 동점인 최적의 수들을 모두 모음 (부동 소수점 오차 감안)
         best_candidates = [move for move, score, _ in move_scores if abs(score - best_score) < 1e-7]
-        return random.choice(best_candidates)
+        chosen_move = random.choice(best_candidates)
+        
+        # UI 연동용 글로벌 변수에 결정 정보 기록 (가상 카피본 시뮬레이션 중이 아닐 때만 기록)
+        if not getattr(game_state, "is_copy", False):
+            LAST_AI_DECISION["move"] = chosen_move
+            LAST_AI_DECISION["score"] = best_score
+            LAST_AI_DECISION["depth"] = depth
+            
+        return chosen_move
     return "pass"
 
 
