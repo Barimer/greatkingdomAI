@@ -18,18 +18,51 @@ st.set_page_config(
 # 디버그 콘솔 출력 여부 플래그
 DEBUG = False
 
+# ----------------- 쿼리 파라미터 기반 착수 처리 -----------------
+# 자바스크립트 없이 100% 신뢰할 수 있는 HTML <a> 태그 쿼리 매개변수 방식의 착수
+if "move" in st.query_params:
+    move_val = st.query_params["move"]
+    # 즉시 쿼리 매개변수 제거하여 새로고침 시 중복 착수 방지
+    st.query_params.clear()
+    
+    try:
+        r, c = map(int, move_val.split("_"))
+        
+        # 세션에 게임이 없는 상황 방지
+        if "game" not in st.session_state:
+            st.session_state.game = GameState()
+            st.session_state.game.is_copy = False
+        if "game_moves" not in st.session_state:
+            st.session_state.game_moves = []
+        if "logs" not in st.session_state:
+            st.session_state.logs = []
+            
+        game = st.session_state.game
+        if not game.game_over and game.current_player == BLUE:
+            # 돌이 이미 놓여진 곳이 아닌지 검증
+            if game.board.get(r, c) == EMPTY:
+                captured_occurred = game.play_move(r, c)
+                st.session_state.game_moves.append([r, c])
+                
+                log_msg = f"BLUE (Human) -> ({r}, {c})"
+                if captured_occurred:
+                    log_msg += " [CAPTURE 발생!]"
+                st.session_state.logs.append(log_msg)
+                
+                # 턴이 ORANGE로 넘어가서 AI Think가 실행되도록 rerun
+                st.rerun()
+    except Exception as e:
+        if DEBUG:
+            print(f"[QUERY ERROR] {e}")
+
 # 세션 상태 초기화
 if "game" not in st.session_state:
     st.session_state.game = GameState()
     st.session_state.game.is_copy = False
-    if DEBUG:
-        print("\n[INITIAL STATE] GameState created:")
-        print(st.session_state.game.board.grid)
-        print()
 if "game_moves" not in st.session_state:
-    st.session_state.game_moves = []  # 순수 좌표 및 패스 히스토리 [ [r,c], "pass", ... ]
+    st.session_state.game_moves = []
 if "logs" not in st.session_state:
-    st.session_state.logs = []
+    st.session_state.logs = ["대국이 새롭게 기동되었습니다. 당신은 BLUE(선공)입니다. 교차점을 클릭하여 착수하세요."]
 if "show_territory" not in st.session_state:
     st.session_state.show_territory = False
 if "test_records" not in st.session_state:
@@ -46,12 +79,8 @@ if "test_records" not in st.session_state:
 def reset_game():
     st.session_state.game = GameState()
     st.session_state.game.is_copy = False
-    if DEBUG:
-        print("\n[RESET STATE] GameState created:")
-        print(st.session_state.game.board.grid)
-        print()
     st.session_state.game_moves = []
-    st.session_state.logs = ["대국이 새롭게 기동되었습니다. 당신은 BLUE(선공)입니다."]
+    st.session_state.logs = ["대국이 새롭게 기동되었습니다. 당신은 BLUE(선공)입니다. 교차점을 클릭하여 착수하세요."]
     st.rerun()
 
 def save_record(game_num, winner_str, reason, total_moves, memo):
@@ -81,8 +110,120 @@ def save_record(game_num, winner_str, reason, total_moves, memo):
         
     st.success(f"Game {game_num} 결과가 성공적으로 기록되었습니다!")
 
+# ----------------- SVG 바둑판 생성기 -----------------
+def generate_board_svg(game, territory_map, last_move_coord):
+    board = game.board
+    size = 500
+    grid_start = 40
+    grid_gap = 50
+    
+    svg = []
+    # 둥근 모서리와 그림자가 들어간 고풍스러운 바둑판 나무 배경 및 검은색 외곽선
+    svg.append(f'<svg width="100%" height="auto" viewBox="0 0 {size} {size}" xmlns="http://www.w3.org/2000/svg" style="background-color: #df9e51; border-radius: 12px; box-shadow: 0 12px 24px rgba(0,0,0,0.45); border: 5px solid #2e1e0a; display: block; margin: auto;">')
+    
+    # 3D 효과를 위한 그라데이션 및 필터 정의
+    svg.append('<defs>')
+    # 3D BLUE 돌
+    svg.append('<radialGradient id="blueStone" cx="35%" cy="35%" r="65%">')
+    svg.append('<stop offset="0%" stop-color="#99c2ff" />')
+    svg.append('<stop offset="30%" stop-color="#3385ff" />')
+    svg.append('<stop offset="85%" stop-color="#003d99" />')
+    svg.append('<stop offset="100%" stop-color="#001a4d" />')
+    svg.append('</radialGradient>')
+    # 3D ORANGE 돌
+    svg.append('<radialGradient id="orangeStone" cx="35%" cy="35%" r="65%">')
+    svg.append('<stop offset="0%" stop-color="#ffc299" />')
+    svg.append('<stop offset="30%" stop-color="#ff8533" />')
+    svg.append('<stop offset="85%" stop-color="#b34700" />')
+    svg.append('<stop offset="100%" stop-color="#4d1f00" />')
+    svg.append('</radialGradient>')
+    # 마지막 수 노란색 글로우 필터
+    svg.append('<filter id="glow" x="-30%" y="-30%" width="160%" height="160%">')
+    svg.append('<feGaussianBlur stdDeviation="5" result="blur" />')
+    svg.append('<feComposite in="SourceGraphic" in2="blur" operator="over" />')
+    svg.append('</filter>')
+    # 돌 하단 입체 그림자 필터
+    svg.append('<filter id="shadow" x="-15%" y="-15%" width="130%" height="130%">')
+    svg.append('<feDropShadow dx="3" dy="5" stdDeviation="3.5" flood-opacity="0.5" />')
+    svg.append('</filter>')
+    svg.append('</defs>')
+    
+    # 격자선 그리기 (9x9)
+    for r in range(9):
+        y = grid_start + r * grid_gap
+        svg.append(f'<line x1="{grid_start}" y1="{y}" x2="{grid_start + 8*grid_gap}" y2="{y}" stroke="#2e1e0a" stroke-width="1.8" />')
+    for c in range(9):
+        x = grid_start + c * grid_gap
+        svg.append(f'<line x1="{x}" y1="{grid_start}" x2="{x}" y2="{grid_start + 8*grid_gap}" stroke="#2e1e0a" stroke-width="1.8" />')
+        
+    # 화점 (Star Points) (2,2), (2,6), (4,4), (6,2), (6,6)
+    star_points = [(2,2), (2,6), (4,4), (6,2), (6,6)]
+    for r_s, c_s in star_points:
+        x_s = grid_start + c_s * grid_gap
+        y_s = grid_start + r_s * grid_gap
+        svg.append(f'<circle cx="{x_s}" cy="{y_s}" r="5" fill="#2e1e0a" />')
+        
+    # 좌표 문자 출력 (상단 0~8, 좌측 0~8)
+    for i in range(9):
+        # 상단 열 번호
+        x_t = grid_start + i * grid_gap
+        svg.append(f'<text x="{x_t}" y="20" font-size="13" font-weight="black" fill="#2e1e0a" text-anchor="middle" dominant-baseline="central" style="user-select:none; font-family:\'Outfit\',\'Inter\',sans-serif;">{i}</text>')
+        # 좌측 행 번호
+        y_t = grid_start + i * grid_gap
+        svg.append(f'<text x="20" y="{y_t}" font-size="13" font-weight="black" fill="#2e1e0a" text-anchor="middle" dominant-baseline="central" style="user-select:none; font-family:\'Outfit\',\'Inter\',sans-serif;">{i}</text>')
+        
+    # 영토 분석 모드 활성화 시 은은한 배경 사각형 렌더링
+    if st.session_state.show_territory:
+        for r in range(9):
+            for c in range(9):
+                key = f"{r}_{c}"
+                if key in territory_map:
+                    owner = territory_map[key]
+                    x_t = grid_start + c * grid_gap
+                    y_t = grid_start + r * grid_gap
+                    color = "#2b7fff" if owner == BLUE else "#ff732b"
+                    svg.append(f'<rect x="{x_t - 22}" y="{y_t - 22}" width="44" height="44" rx="8" fill="{color}" fill-opacity="0.32" stroke="{color}" stroke-width="1.5" stroke-dasharray="3,3" />')
+                    
+    # 돌 렌더링 (BLUE / ORANGE / NEUTRAL)
+    for r in range(9):
+        for c in range(9):
+            cell_val = board.get(r, c)
+            x = grid_start + c * grid_gap
+            y = grid_start + r * grid_gap
+            
+            is_last = (last_move_coord and last_move_coord[0] == r and last_move_coord[1] == c)
+            
+            # 마지막 수 주위 노란색 글로우 테두리 강조
+            if is_last and cell_val in (BLUE, ORANGE):
+                svg.append(f'<circle cx="{x}" cy="{y}" r="22" stroke="#ffe600" stroke-width="5" fill="none" filter="url(#glow)" />')
+                
+            if cell_val == BLUE:
+                svg.append(f'<circle cx="{x}" cy="{y}" r="19" fill="url(#blueStone)" filter="url(#shadow)" />')
+            elif cell_val == ORANGE:
+                svg.append(f'<circle cx="{x}" cy="{y}" r="19" fill="url(#orangeStone)" filter="url(#shadow)" />')
+            elif cell_val == NEUTRAL:
+                # 중립 성 3D 엠블럼처럼 렌더링
+                svg.append(f'<text x="{x}" y="{y}" font-size="30" text-anchor="middle" dominant-baseline="central" filter="url(#shadow)" style="user-select:none;">🏰</text>')
+                
+    # 투명 클릭 영역 (BLUE Human 차례에 착수 가능한 빈 칸들만 링크 생성)
+    if not game.game_over and game.current_player == BLUE:
+        for r in range(9):
+            for c in range(9):
+                cell_val = board.get(r, c)
+                if cell_val == EMPTY:
+                    x = grid_start + c * grid_gap
+                    y = grid_start + r * grid_gap
+                    svg.append(f'<a href="?move={r}_{c}" target="_self">')
+                    svg.append(f'<circle cx="{x}" cy="{y}" r="22" fill="transparent" class="empty-intersect" cursor="pointer">')
+                    svg.append(f'<title>착수: ({r}, {c})</title>')
+                    svg.append('</circle>')
+                    svg.append('</a>')
+                    
+    svg.append('</svg>')
+    return "\n".join(svg)
+
 # ----------------- UI 레이아웃 -----------------
-st.title("🏯 Great Kingdom AI - Human Test Room")
+st.title("🏰 Great Kingdom AI - Human Test Room")
 
 # 사이드바 설정
 st.sidebar.header("⚙️ 컨트롤 타워")
@@ -123,7 +264,7 @@ st.sidebar.subheader("📜 수순 로그")
 log_text = "\n".join(st.session_state.logs[-15:])
 st.sidebar.text_area("최근 수순 내역", log_text, height=180, disabled=True)
 
-# AI 사고 로그 패널 표시 (콘솔 출력 금지 대응)
+# AI 사고 로그 패널 표시
 if LAST_AI_DECISION["move"] is not None:
     st.sidebar.markdown("---")
     st.sidebar.subheader("🤖 AI 사고 분석 로그")
@@ -152,61 +293,17 @@ if not game.game_over and game.current_player == ORANGE:
             
         st.rerun()
 
-# ----------------- 바둑판 오버라이드 CSS -----------------
-# Streamlit의 컬럼 및 버튼 마진을 0으로 뭉개서 완벽한 격자판을 렌더링
+# ----------------- 바둑판 전용 호버 효과 및 CSS -----------------
 board_style = """
 <style>
-/* 바둑판 전용 st.columns 간 격자 여백 제거 */
-div[data-testid="column"] div[data-testid="stHorizontalBlock"] {
-    gap: 0px !important;
-    max-width: 480px !important; /* 바둑판 전체 너비를 최대 480px로 제한 */
-    margin: 0 auto !important;   /* 가운데 정렬 */
+/* 교차점 호버 시 반투명 파란 돌 및 가이드 테두리 잔상 표시 */
+circle.empty-intersect {
+    transition: fill 0.12s ease, stroke 0.12s ease;
 }
-
-/* 바둑판 전용 각 열(column) 패딩/마진 제거 및 정렬 */
-div[data-testid="column"] div[data-testid="column"] {
-    padding: 0px !important;
-    margin: 0px !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-}
-
-/* 바둑판 전용 버튼 디자인 (반응형 100% 너비 및 1:1 비율) */
-div[data-testid="column"] div[data-testid="column"] .stButton > button {
-    width: 100% !important;
-    aspect-ratio: 1 / 1 !important;
-    padding: 0px !important;
-    margin: 0px !important;
-    border-radius: 0px !important;
-    border: 1px solid #4a3b2c !important;
-    background-color: #f2d096 !important;
-    font-size: 22px !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    box-sizing: border-box !important;
-    transition: background-color 0.1s;
-}
-
-div[data-testid="column"] div[data-testid="column"] .stButton > button:hover {
-    background-color: #e5bd7c !important;
-    border-color: #4a3b2c !important;
-}
-
-/* 좌표 라벨 텍스트 스타일 */
-.coord-label {
-    font-size: 16px;
-    font-weight: bold;
-    color: #4a3b2c;
-    user-select: none;
-    text-align: center;
-    width: 100% !important;
-    aspect-ratio: 1 / 1 !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    box-sizing: border-box !important;
+circle.empty-intersect:hover {
+    fill: rgba(0, 85, 255, 0.28) !important;
+    stroke: #0055ff !important;
+    stroke-width: 2px !important;
 }
 </style>
 """
@@ -257,74 +354,15 @@ if st.session_state.game_moves:
     if last != "pass":
         last_move_coord = last
 
-# UI 렌더링 직전 보드 셀 정보 콘솔 출력 (DEBUG 모드일 때만 수행)
-if DEBUG:
-    print("\n--- UI RENDER BOARD INSPECTION ---")
-    for r_inspect in range(9):
-        for c_inspect in range(9):
-            print(r_inspect, c_inspect, board.grid[r_inspect][c_inspect])
-    print("-----------------------------------\n")
-
-# ----------------- 바둑판 렌더링 (Streamlit native) -----------------
-col_game_board, col_panel = st.columns([1.6, 1])
+# ----------------- 바둑판 렌더링 -----------------
+col_game_board, col_panel = st.columns([1.5, 1])
 
 with col_game_board:
     st.subheader("🏁 9x9 그레이트 킹덤 바둑판")
     
-    # 1. 상단 열 좌표 인덱스 출력 (0~8)
-    cols_header = st.columns(10)
-    cols_header[0].markdown('<div class="coord-label"></div>', unsafe_allow_html=True) # 좌측 상단 모서리 빈칸
-    for c in range(9):
-        cols_header[c+1].markdown(f'<div class="coord-label">{c}</div>', unsafe_allow_html=True)
-        
-    # 2. 바둑판 격자 렌더링 (0~8 행)
-    for r in range(9):
-        cols = st.columns(10)
-        # 좌측 행 좌표 인덱스 출력
-        cols[0].markdown(f'<div class="coord-label">{r}</div>', unsafe_allow_html=True)
-        
-        for c in range(9):
-            cell_val = board.get(r, c)
-            is_neutral = (cell_val == NEUTRAL)
-            is_last = last_move_coord and last_move_coord[0] == r and last_move_coord[1] == c
-            
-            # 유니코드 입체 기호 결정
-            if cell_val == BLUE:
-                symbol = "🔵"
-                if is_last:
-                    symbol = "🔵🎯" # 마지막 착수 강조
-            elif cell_val == ORANGE:
-                symbol = "orange" # 아래에서 특수 아이콘 대체
-                symbol = "🟠"
-                if is_last:
-                    symbol = "🟠🎯" # 마지막 착수 강조
-            elif is_neutral:
-                symbol = "🏰" # 중립 성 표시
-            else:
-                # 빈칸일 때 영토 시각화 맵과 마지막 수 여부에 따라 마크 결정
-                terr_owner = territory_map.get(f"{r}_{c}")
-                if terr_owner == BLUE:
-                    symbol = "🔹" # 연파랑 영토
-                elif terr_owner == ORANGE:
-                    symbol = "🔸" # 연주황 영토
-                elif is_last:
-                    symbol = "🎯"
-                else:
-                    symbol = "➕" # 바둑판 교차점 느낌
-            
-            # 버튼 클릭 액션 핸들링 (착수는 EMPTY 일 때만 활성화)
-            is_disabled = game.game_over or game.current_player != BLUE or cell_val in (BLUE, ORANGE, NEUTRAL)
-            
-            if cols[c+1].button(symbol, key=f"cell_{r}_{c}", disabled=is_disabled):
-                # 유저 착수 처리
-                captured_occurred = game.play_move(r, c)
-                st.session_state.game_moves.append([r, c])
-                
-                log_msg = f"BLUE (Human) -> ({r}, {c})"
-                if captured_occurred:
-                    log_msg += " [CAPTURE 발생!]"
-                st.session_state.logs.append(log_msg)
-                st.rerun()
+    # 고해상도 SVG 바둑판 렌더링
+    board_svg = generate_board_svg(game, territory_map, last_move_coord)
+    st.markdown(board_svg, unsafe_allow_html=True)
 
 # ----------------- 종료 및 기록 폼 렌더링 -----------------
 if game.game_over:
