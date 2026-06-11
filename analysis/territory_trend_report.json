@@ -1,0 +1,1073 @@
+{
+  "summary": {
+    "total_games": 20,
+    "total_capture_games": 20,
+    "average_territory_difference_blue_orange": "BLUE +0.15",
+    "average_territory_difference_winner_loser": "WINNER +0.01",
+    "winner_territory_dominant_percentage": "21.0%",
+    "loser_dominant_at_capture_percentage": "25.0%",
+    "comeback_capture_count": 5
+  },
+  "details": [
+    {
+      "game_id": "game_001.json",
+      "winner": 1,
+      "win_reason": "CAPTURE",
+      "total_moves": 25,
+      "trend": [
+        {
+          "move": 21,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 22,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 23,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 24,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 24,
+          "is_capture_point": true,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        }
+      ]
+    },
+    {
+      "game_id": "game_002.json",
+      "winner": 1,
+      "win_reason": "CAPTURE",
+      "total_moves": 31,
+      "trend": [
+        {
+          "move": 27,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 28,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 29,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 30,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 30,
+          "is_capture_point": true,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        }
+      ]
+    },
+    {
+      "game_id": "game_003.json",
+      "winner": 2,
+      "win_reason": "CAPTURE",
+      "total_moves": 14,
+      "trend": [
+        {
+          "move": 10,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 11,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 12,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 13,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 13,
+          "is_capture_point": true,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        }
+      ]
+    },
+    {
+      "game_id": "game_004.json",
+      "winner": 1,
+      "win_reason": "CAPTURE",
+      "total_moves": 21,
+      "trend": [
+        {
+          "move": 17,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 18,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 19,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 20,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 20,
+          "is_capture_point": true,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        }
+      ]
+    },
+    {
+      "game_id": "game_005.json",
+      "winner": 1,
+      "win_reason": "CAPTURE",
+      "total_moves": 19,
+      "trend": [
+        {
+          "move": 15,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 16,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 17,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 18,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 18,
+          "is_capture_point": true,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        }
+      ]
+    },
+    {
+      "game_id": "game_006.json",
+      "winner": 1,
+      "win_reason": "CAPTURE",
+      "total_moves": 61,
+      "trend": [
+        {
+          "move": 57,
+          "is_capture_point": false,
+          "blue_territory": 2,
+          "orange_territory": 4,
+          "winner_territory": 2,
+          "loser_territory": 4,
+          "diff": -2
+        },
+        {
+          "move": 58,
+          "is_capture_point": false,
+          "blue_territory": 2,
+          "orange_territory": 4,
+          "winner_territory": 2,
+          "loser_territory": 4,
+          "diff": -2
+        },
+        {
+          "move": 59,
+          "is_capture_point": false,
+          "blue_territory": 2,
+          "orange_territory": 4,
+          "winner_territory": 2,
+          "loser_territory": 4,
+          "diff": -2
+        },
+        {
+          "move": 60,
+          "is_capture_point": false,
+          "blue_territory": 2,
+          "orange_territory": 6,
+          "winner_territory": 2,
+          "loser_territory": 6,
+          "diff": -4
+        },
+        {
+          "move": 60,
+          "is_capture_point": true,
+          "blue_territory": 2,
+          "orange_territory": 6,
+          "winner_territory": 2,
+          "loser_territory": 6,
+          "diff": -4
+        }
+      ]
+    },
+    {
+      "game_id": "game_007.json",
+      "winner": 1,
+      "win_reason": "CAPTURE",
+      "total_moves": 25,
+      "trend": [
+        {
+          "move": 21,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 22,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 23,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 24,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 24,
+          "is_capture_point": true,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        }
+      ]
+    },
+    {
+      "game_id": "game_008.json",
+      "winner": 2,
+      "win_reason": "CAPTURE",
+      "total_moves": 28,
+      "trend": [
+        {
+          "move": 24,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 25,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 26,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 27,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 27,
+          "is_capture_point": true,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        }
+      ]
+    },
+    {
+      "game_id": "game_009.json",
+      "winner": 2,
+      "win_reason": "CAPTURE",
+      "total_moves": 24,
+      "trend": [
+        {
+          "move": 20,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 21,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 22,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 23,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 23,
+          "is_capture_point": true,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        }
+      ]
+    },
+    {
+      "game_id": "game_010.json",
+      "winner": 1,
+      "win_reason": "CAPTURE",
+      "total_moves": 27,
+      "trend": [
+        {
+          "move": 23,
+          "is_capture_point": false,
+          "blue_territory": 4,
+          "orange_territory": 0,
+          "winner_territory": 4,
+          "loser_territory": 0,
+          "diff": 4
+        },
+        {
+          "move": 24,
+          "is_capture_point": false,
+          "blue_territory": 4,
+          "orange_territory": 0,
+          "winner_territory": 4,
+          "loser_territory": 0,
+          "diff": 4
+        },
+        {
+          "move": 25,
+          "is_capture_point": false,
+          "blue_territory": 4,
+          "orange_territory": 0,
+          "winner_territory": 4,
+          "loser_territory": 0,
+          "diff": 4
+        },
+        {
+          "move": 26,
+          "is_capture_point": false,
+          "blue_territory": 4,
+          "orange_territory": 0,
+          "winner_territory": 4,
+          "loser_territory": 0,
+          "diff": 4
+        },
+        {
+          "move": 26,
+          "is_capture_point": true,
+          "blue_territory": 4,
+          "orange_territory": 0,
+          "winner_territory": 4,
+          "loser_territory": 0,
+          "diff": 4
+        }
+      ]
+    },
+    {
+      "game_id": "game_011.json",
+      "winner": 2,
+      "win_reason": "CAPTURE",
+      "total_moves": 30,
+      "trend": [
+        {
+          "move": 26,
+          "is_capture_point": false,
+          "blue_territory": 2,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 2,
+          "diff": 2
+        },
+        {
+          "move": 27,
+          "is_capture_point": false,
+          "blue_territory": 2,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 2,
+          "diff": 2
+        },
+        {
+          "move": 28,
+          "is_capture_point": false,
+          "blue_territory": 2,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 2,
+          "diff": 2
+        },
+        {
+          "move": 29,
+          "is_capture_point": false,
+          "blue_territory": 2,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 2,
+          "diff": 2
+        },
+        {
+          "move": 29,
+          "is_capture_point": true,
+          "blue_territory": 2,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 2,
+          "diff": 2
+        }
+      ]
+    },
+    {
+      "game_id": "game_012.json",
+      "winner": 1,
+      "win_reason": "CAPTURE",
+      "total_moves": 39,
+      "trend": [
+        {
+          "move": 35,
+          "is_capture_point": false,
+          "blue_territory": 1,
+          "orange_territory": 0,
+          "winner_territory": 1,
+          "loser_territory": 0,
+          "diff": 1
+        },
+        {
+          "move": 36,
+          "is_capture_point": false,
+          "blue_territory": 1,
+          "orange_territory": 0,
+          "winner_territory": 1,
+          "loser_territory": 0,
+          "diff": 1
+        },
+        {
+          "move": 37,
+          "is_capture_point": false,
+          "blue_territory": 1,
+          "orange_territory": 0,
+          "winner_territory": 1,
+          "loser_territory": 0,
+          "diff": 1
+        },
+        {
+          "move": 38,
+          "is_capture_point": false,
+          "blue_territory": 1,
+          "orange_territory": 0,
+          "winner_territory": 1,
+          "loser_territory": 0,
+          "diff": 1
+        },
+        {
+          "move": 38,
+          "is_capture_point": true,
+          "blue_territory": 1,
+          "orange_territory": 0,
+          "winner_territory": 1,
+          "loser_territory": 0,
+          "diff": 1
+        }
+      ]
+    },
+    {
+      "game_id": "game_013.json",
+      "winner": 1,
+      "win_reason": "CAPTURE",
+      "total_moves": 33,
+      "trend": [
+        {
+          "move": 29,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 30,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 31,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 32,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 32,
+          "is_capture_point": true,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        }
+      ]
+    },
+    {
+      "game_id": "game_014.json",
+      "winner": 1,
+      "win_reason": "CAPTURE",
+      "total_moves": 45,
+      "trend": [
+        {
+          "move": 41,
+          "is_capture_point": false,
+          "blue_territory": 4,
+          "orange_territory": 2,
+          "winner_territory": 4,
+          "loser_territory": 2,
+          "diff": 2
+        },
+        {
+          "move": 42,
+          "is_capture_point": false,
+          "blue_territory": 4,
+          "orange_territory": 2,
+          "winner_territory": 4,
+          "loser_territory": 2,
+          "diff": 2
+        },
+        {
+          "move": 43,
+          "is_capture_point": false,
+          "blue_territory": 5,
+          "orange_territory": 2,
+          "winner_territory": 5,
+          "loser_territory": 2,
+          "diff": 3
+        },
+        {
+          "move": 44,
+          "is_capture_point": false,
+          "blue_territory": 5,
+          "orange_territory": 2,
+          "winner_territory": 5,
+          "loser_territory": 2,
+          "diff": 3
+        },
+        {
+          "move": 44,
+          "is_capture_point": true,
+          "blue_territory": 5,
+          "orange_territory": 2,
+          "winner_territory": 5,
+          "loser_territory": 2,
+          "diff": 3
+        }
+      ]
+    },
+    {
+      "game_id": "game_015.json",
+      "winner": 1,
+      "win_reason": "CAPTURE",
+      "total_moves": 41,
+      "trend": [
+        {
+          "move": 37,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 3,
+          "winner_territory": 0,
+          "loser_territory": 3,
+          "diff": -3
+        },
+        {
+          "move": 38,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 3,
+          "winner_territory": 0,
+          "loser_territory": 3,
+          "diff": -3
+        },
+        {
+          "move": 39,
+          "is_capture_point": false,
+          "blue_territory": 2,
+          "orange_territory": 3,
+          "winner_territory": 2,
+          "loser_territory": 3,
+          "diff": -1
+        },
+        {
+          "move": 40,
+          "is_capture_point": false,
+          "blue_territory": 2,
+          "orange_territory": 3,
+          "winner_territory": 2,
+          "loser_territory": 3,
+          "diff": -1
+        },
+        {
+          "move": 40,
+          "is_capture_point": true,
+          "blue_territory": 2,
+          "orange_territory": 3,
+          "winner_territory": 2,
+          "loser_territory": 3,
+          "diff": -1
+        }
+      ]
+    },
+    {
+      "game_id": "game_016.json",
+      "winner": 2,
+      "win_reason": "CAPTURE",
+      "total_moves": 50,
+      "trend": [
+        {
+          "move": 46,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 5,
+          "winner_territory": 5,
+          "loser_territory": 0,
+          "diff": -5
+        },
+        {
+          "move": 47,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 2,
+          "winner_territory": 2,
+          "loser_territory": 0,
+          "diff": -2
+        },
+        {
+          "move": 48,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 2,
+          "winner_territory": 2,
+          "loser_territory": 0,
+          "diff": -2
+        },
+        {
+          "move": 49,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 2,
+          "winner_territory": 2,
+          "loser_territory": 0,
+          "diff": -2
+        },
+        {
+          "move": 49,
+          "is_capture_point": true,
+          "blue_territory": 0,
+          "orange_territory": 2,
+          "winner_territory": 2,
+          "loser_territory": 0,
+          "diff": -2
+        }
+      ]
+    },
+    {
+      "game_id": "game_017.json",
+      "winner": 2,
+      "win_reason": "CAPTURE",
+      "total_moves": 22,
+      "trend": [
+        {
+          "move": 18,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 19,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 20,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 21,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 21,
+          "is_capture_point": true,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        }
+      ]
+    },
+    {
+      "game_id": "game_018.json",
+      "winner": 1,
+      "win_reason": "CAPTURE",
+      "total_moves": 25,
+      "trend": [
+        {
+          "move": 21,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 22,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 23,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 24,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        },
+        {
+          "move": 24,
+          "is_capture_point": true,
+          "blue_territory": 0,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 0,
+          "diff": 0
+        }
+      ]
+    },
+    {
+      "game_id": "game_019.json",
+      "winner": 2,
+      "win_reason": "CAPTURE",
+      "total_moves": 52,
+      "trend": [
+        {
+          "move": 48,
+          "is_capture_point": false,
+          "blue_territory": 2,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 2,
+          "diff": 2
+        },
+        {
+          "move": 49,
+          "is_capture_point": false,
+          "blue_territory": 2,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 2,
+          "diff": 2
+        },
+        {
+          "move": 50,
+          "is_capture_point": false,
+          "blue_territory": 2,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 2,
+          "diff": 2
+        },
+        {
+          "move": 51,
+          "is_capture_point": false,
+          "blue_territory": 2,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 2,
+          "diff": 2
+        },
+        {
+          "move": 51,
+          "is_capture_point": true,
+          "blue_territory": 2,
+          "orange_territory": 0,
+          "winner_territory": 0,
+          "loser_territory": 2,
+          "diff": 2
+        }
+      ]
+    },
+    {
+      "game_id": "game_020.json",
+      "winner": 1,
+      "win_reason": "CAPTURE",
+      "total_moves": 39,
+      "trend": [
+        {
+          "move": 35,
+          "is_capture_point": false,
+          "blue_territory": 3,
+          "orange_territory": 2,
+          "winner_territory": 3,
+          "loser_territory": 2,
+          "diff": 1
+        },
+        {
+          "move": 36,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 2,
+          "winner_territory": 0,
+          "loser_territory": 2,
+          "diff": -2
+        },
+        {
+          "move": 37,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 2,
+          "winner_territory": 0,
+          "loser_territory": 2,
+          "diff": -2
+        },
+        {
+          "move": 38,
+          "is_capture_point": false,
+          "blue_territory": 0,
+          "orange_territory": 2,
+          "winner_territory": 0,
+          "loser_territory": 2,
+          "diff": -2
+        },
+        {
+          "move": 38,
+          "is_capture_point": true,
+          "blue_territory": 0,
+          "orange_territory": 2,
+          "winner_territory": 0,
+          "loser_territory": 2,
+          "diff": -2
+        }
+      ]
+    }
+  ]
+}
