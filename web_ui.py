@@ -8,9 +8,6 @@ from engine.board import BLUE, ORANGE, EMPTY, NEUTRAL
 from ai.minimax import find_best_move, LAST_AI_DECISION
 from engine.territory import calculate_territory
 
-# 디버그 콘솔 출력 여부 플래그
-DEBUG = False
-
 # 페이지 설정
 st.set_page_config(
     page_title="Great Kingdom AI - Web Test Room",
@@ -18,10 +15,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# 디버그 콘솔 출력 여부 플래그
+DEBUG = False
+
 # 세션 상태 초기화
 if "game" not in st.session_state:
     st.session_state.game = GameState()
-    st.session_state.game.is_copy = True
+    st.session_state.game.is_copy = False
     if DEBUG:
         print("\n[INITIAL STATE] GameState created:")
         print(st.session_state.game.board.grid)
@@ -45,15 +45,13 @@ if "test_records" not in st.session_state:
 
 def reset_game():
     st.session_state.game = GameState()
-    st.session_state.game.is_copy = True
+    st.session_state.game.is_copy = False
     if DEBUG:
         print("\n[RESET STATE] GameState created:")
         print(st.session_state.game.board.grid)
         print()
     st.session_state.game_moves = []
     st.session_state.logs = ["대국이 새롭게 기동되었습니다. 당신은 BLUE(선공)입니다."]
-    # 쿼리 파라미터 초기화
-    st.query_params.clear()
     st.rerun()
 
 def save_record(game_num, winner_str, reason, total_moves, memo):
@@ -82,30 +80,6 @@ def save_record(game_num, winner_str, reason, total_moves, memo):
         f.write("\n".join(md_content))
         
     st.success(f"Game {game_num} 결과가 성공적으로 기록되었습니다!")
-
-# ----------------- URL 쿼리 파라미터 착수 감지 -----------------
-# 양방향 통신 트릭: 클릭 시 iframe에서 부모 주소를 '?click=r_c'로 리다이렉트함
-click_param = st.query_params.get("click")
-if click_param and not st.session_state.game.game_over and st.session_state.game.current_player == BLUE:
-    try:
-        r_str, c_str = click_param.split("_")
-        r, c = int(r_str), int(c_str)
-        
-        # 착수 유효성 검사 (이미 돌이 놓인 곳 제외)
-        if st.session_state.game.board.get(r, c) == EMPTY:
-            captured_occurred = st.session_state.game.play_move(r, c)
-            st.session_state.game_moves.append([r, c])
-            
-            log_msg = f"BLUE (Human) -> ({r}, {c})"
-            if captured_occurred:
-                log_msg += " [CAPTURE 발생!]"
-            st.session_state.logs.append(log_msg)
-            
-            # 파라미터 지우고 리렌더링
-            st.query_params.clear()
-            st.rerun()
-    except Exception as e:
-        st.error(f"착수 처리 오류: {e}")
 
 # ----------------- UI 레이아웃 -----------------
 st.title("🏯 Great Kingdom AI - Human Test Room")
@@ -141,7 +115,6 @@ if not game.game_over and game.current_player == BLUE:
         game.play_pass()
         st.session_state.game_moves.append("pass")
         st.session_state.logs.append("BLUE (Human) -> PASS")
-        st.query_params.clear()
         st.rerun()
 
 # 최근 로그 내역
@@ -161,7 +134,6 @@ if LAST_AI_DECISION["move"] is not None:
 # AI 백그라운드 연산 즉시 기동
 if not game.game_over and game.current_player == ORANGE:
     with st.spinner("🤖 AI가 미니맥스(Depth 3) 수읽기 중..."):
-        # AI 생각 연산 시간을 일부러 주고 현실감을 높임
         time.sleep(0.5)
         ai_move = find_best_move(game, depth=3)
         
@@ -178,53 +150,77 @@ if not game.game_over and game.current_player == ORANGE:
                 log_msg += " [CAPTURE 발생!]"
             st.session_state.logs.append(log_msg)
             
-        st.query_params.clear()
         st.rerun()
 
-# ----------------- HTML5/CSS3 바둑판 렌더링 -----------------
-# UI 렌더링 직전 보드 셀 정보 콘솔 출력 (DEBUG 모드일 때만 수행)
-if DEBUG:
-    print("\n--- UI RENDER BOARD INSPECTION ---")
-    for r_inspect in range(9):
-        for c_inspect in range(9):
-            print(r_inspect, c_inspect, board.grid[r_inspect][c_inspect])
-    print("-----------------------------------\n")
+# ----------------- 바둑판 오버라이드 CSS -----------------
+# Streamlit의 컬럼 및 버튼 마진을 0으로 뭉개서 완벽한 격자판을 렌더링
+board_style = """
+<style>
+/* 바둑판 전용 st.columns 간 격자 여백 제거 */
+div[data-testid="column"] div[data-testid="stHorizontalBlock"] {
+    gap: 0px !important;
+    max-width: 480px !important; /* 바둑판 전체 너비를 최대 480px로 제한 */
+    margin: 0 auto !important;   /* 가운데 정렬 */
+}
 
-# 9x9 격자판 데이터 구성
-board_list = []
-for r in range(9):
-    row_data = []
-    for c in range(9):
-        cell_val = board.get(r, c)
-        # 하드코딩 대신 실제 데이터의 NEUTRAL 값을 기반으로 판단
-        is_neutral = (cell_val == NEUTRAL)
-        
-        # 영토 여부 판단
-        # calculate_territory는 전체 맵의 영토 배정을 하지 않고 총합만 리턴할 수 있으므로,
-        # 각 빈 칸에 대해 영토 판정을 하는 BFS 로직을 내장하거나, 
-        # engine/territory.py의 상세 맵 구조를 직접 참조하여 칠합니다.
-        row_data.append({
-            "r": r,
-            "c": c,
-            "val": cell_val,
-            "neutral": is_neutral
-        })
-    board_list.append(row_data)
+/* 바둑판 전용 각 열(column) 패딩/마진 제거 및 정렬 */
+div[data-testid="column"] div[data-testid="column"] {
+    padding: 0px !important;
+    margin: 0px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
 
-# 영토 맵 구체화 (시각화 켜져 있을 때 각 격자의 영토 귀속 파악)
+/* 바둑판 전용 버튼 디자인 (반응형 100% 너비 및 1:1 비율) */
+div[data-testid="column"] div[data-testid="column"] .stButton > button {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    padding: 0px !important;
+    margin: 0px !important;
+    border-radius: 0px !important;
+    border: 1px solid #4a3b2c !important;
+    background-color: #f2d096 !important;
+    font-size: 22px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
+    transition: background-color 0.1s;
+}
+
+div[data-testid="column"] div[data-testid="column"] .stButton > button:hover {
+    background-color: #e5bd7c !important;
+    border-color: #4a3b2c !important;
+}
+
+/* 좌표 라벨 텍스트 스타일 */
+.coord-label {
+    font-size: 16px;
+    font-weight: bold;
+    color: #4a3b2c;
+    user-select: none;
+    text-align: center;
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
+}
+</style>
+"""
+st.markdown(board_style, unsafe_allow_html=True)
+
+# ----------------- 영토 분석 맵 계산 -----------------
 territory_map = {}
 if st.session_state.show_territory:
-    # engine.territory 내부의 상세 계산 로직을 본따서 각 빈칸의 영토 상태를 구함
-    # calculation_territory의 상세 BFS를 임시로 구현해 각 칸을 칠합니다.
-    from engine.territory import calculate_territory
-    # 빈칸들을 그룹화하여 영토 파악
     empty_cells = []
     for r in range(9):
         for c in range(9):
             if board.get(r, c) == EMPTY and (r, c) not in [(2,4), (4,2), (4,6), (6,4), (4,4)]:
                 empty_cells.append((r, c))
                 
-    # 간단한 BFS로 인접 돌 체크
     visited = set()
     for start in empty_cells:
         if start in visited:
@@ -249,7 +245,6 @@ if st.session_state.show_territory:
                     elif val in (BLUE, ORANGE):
                         borders.add(val)
                         
-        # 영토 판정
         if len(borders) == 1:
             owner = list(borders)[0]
             for gr, gc in group:
@@ -260,206 +255,76 @@ last_move_coord = None
 if st.session_state.game_moves:
     last = st.session_state.game_moves[-1]
     if last != "pass":
-        last_move_coord = last  # [r, c]
+        last_move_coord = last
 
-# HTML 및 CSS 조립
-# 바둑판은 목조 베이지 무늬(#f0cb85)와 짙은 선(#4b3b28)으로 디자인
-# 좌표축(숫자 0~8)을 포함한 10x10 CSS Grid 구성
-grid_html = """
-<div class="board-container">
-    <div class="board-grid">
-        <!-- 빈칸 헤더 (좌측 상단 모서리) -->
-        <div class="coord-label header-label"></div>
-        
-        <!-- 열 좌표 축 -->
-        <div class="coord-label header-label">0</div>
-        <div class="coord-label header-label">1</div>
-        <div class="coord-label header-label">2</div>
-        <div class="coord-label header-label">3</div>
-        <div class="coord-label header-label">4</div>
-        <div class="coord-label header-label">5</div>
-        <div class="coord-label header-label">6</div>
-        <div class="coord-label header-label">7</div>
-        <div class="coord-label header-label">8</div>
-"""
+# UI 렌더링 직전 보드 셀 정보 콘솔 출력 (DEBUG 모드일 때만 수행)
+if DEBUG:
+    print("\n--- UI RENDER BOARD INSPECTION ---")
+    for r_inspect in range(9):
+        for c_inspect in range(9):
+            print(r_inspect, c_inspect, board.grid[r_inspect][c_inspect])
+    print("-----------------------------------\n")
 
-for r in range(9):
-    # 행 좌표 축 (좌측)
-    grid_html += f'<div class="coord-label row-label">{r}</div>'
-    for c in range(9):
-        cell_info = board_list[r][c]
-        val = cell_info["val"]
-        is_neutral = cell_info["neutral"]
-        
-        # 클래스 설정
-        classes = ["board-cell"]
-        
-        # 영토 시각화 배경칠하기
-        terr_owner = territory_map.get(f"{r}_{c}")
-        if terr_owner == BLUE:
-            classes.append("bg-blue-territory")
-        elif terr_owner == ORANGE:
-            classes.append("bg-orange-territory")
-            
-        class_str = " ".join(classes)
-        
-        # 돌 렌더링
-        stone_html = ""
-        is_last = last_move_coord and last_move_coord[0] == r and last_move_coord[1] == c
-        last_move_glow = " last-move-glow" if is_last else ""
-        
-        if val == BLUE:
-            stone_html = f'<div class="stone stone-blue{last_move_glow}"></div>'
-        elif val == ORANGE:
-            stone_html = f'<div class="stone stone-orange{last_move_glow}"></div>'
-        elif is_neutral:
-            # 검은 성 아이콘 또는 검은 돌 표시
-            stone_html = f'<div class="stone stone-neutral{last_move_glow}">🏰</div>'
-        elif is_last:
-            # 빈 곳인데 마지막 수인 경우 (그럴 일은 거의 없지만 안전 조치)
-            stone_html = f'<div class="last-move-marker"></div>'
-            
-        # 클릭 이벤트 연동
-        # 버튼처럼 작동하되 일체감 있는 보드로 렌더링
-        is_clickable = (val == EMPTY and not game.game_over and game.current_player == BLUE)
-        clickable_attr = f'onclick="cellClicked({r}, {c})"' if is_clickable else ""
-        cursor_style = " cursor-pointer" if is_clickable else " cursor-not-allowed"
-        
-        grid_html += f"""
-        <div class="{class_str}{cursor_style}" {clickable_attr}>
-            {stone_html}
-        </div>
-        """
-
-grid_html += """
-    </div>
-</div>
-"""
-
-# 스타일 정의
-board_css = """
-<style>
-.board-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #f7f9fa;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
-}
-.board-grid {
-    display: grid;
-    grid-template-columns: 30px repeat(9, 50px);
-    grid-template-rows: 30px repeat(9, 50px);
-    gap: 0px;
-    background-color: #ebc178;
-    border: 3px solid #3d2d1d;
-    padding: 10px;
-    border-radius: 8px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-}
-.coord-label {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-weight: bold;
-    font-size: 14px;
-    color: #3d2d1d;
-    user-select: none;
-}
-.header-label {
-    border-bottom: 2px solid transparent;
-}
-.row-label {
-    border-right: 2px solid transparent;
-}
-.board-cell {
-    position: relative;
-    border: 1px solid #4a3b2c;
-    background-color: #f2d096;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-sizing: border-box;
-    transition: background-color 0.2s;
-}
-/* 영토 배경 */
-.bg-blue-territory {
-    background-color: rgba(59, 118, 225, 0.35) !important;
-}
-.bg-orange-territory {
-    background-color: rgba(233, 87, 63, 0.35) !important;
-}
-/* 커서 활성화 */
-.cursor-pointer {
-    cursor: pointer;
-}
-.cursor-pointer:hover {
-    background-color: #e5bd7c;
-}
-.cursor-not-allowed {
-    cursor: not-allowed;
-}
-/* 돌 디자인 */
-.stone {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 20px;
-    user-select: none;
-    z-index: 5;
-    box-shadow: 2px 3px 6px rgba(0,0,0,0.3);
-}
-.stone-blue {
-    background: radial-gradient(circle at 30% 30%, #5d9cec, #3b76e1);
-    border: 1px solid #2e5cb8;
-}
-.stone-orange {
-    background: radial-gradient(circle at 30% 30%, #fc6e51, #e9573f);
-    border: 1px solid #c83d27;
-}
-.stone-neutral {
-    background: radial-gradient(circle at 30% 30%, #4f5d75, #2d3748);
-    border: 1px solid #1a202c;
-    color: white;
-}
-/* 마지막 수 강조 */
-.last-move-glow {
-    border: 3px solid #ffce54 !important;
-    box-shadow: 0 0 15px #ffce54, 2px 3px 6px rgba(0,0,0,0.3) !important;
-    animation: pulse 1.0s infinite alternate;
-}
-.last-move-marker {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background-color: #ffce54;
-    box-shadow: 0 0 8px #ffce54;
-}
-@keyframes pulse {
-    0% { transform: scale(1.0); }
-    100% { transform: scale(1.05); }
-}
-</style>
-
-<script>
-function cellClicked(r, c) {
-    // 부모 Streamlit 창의 URL을 변경하여 클릭 정보를 파라미터로 송신
-    window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + "?click=" + r + "_" + c;
-}
-</script>
-"""
-
-# 메인 레이아웃 렌더링
+# ----------------- 바둑판 렌더링 (Streamlit native) -----------------
 col_game_board, col_panel = st.columns([1.6, 1])
 
 with col_game_board:
-    # 격자 보드 HTML 출력
-    st.components.v1.html(board_css + grid_html, height=580, scrolling=False)
+    st.subheader("🏁 9x9 그레이트 킹덤 바둑판")
+    
+    # 1. 상단 열 좌표 인덱스 출력 (0~8)
+    cols_header = st.columns(10)
+    cols_header[0].markdown('<div class="coord-label"></div>', unsafe_allow_html=True) # 좌측 상단 모서리 빈칸
+    for c in range(9):
+        cols_header[c+1].markdown(f'<div class="coord-label">{c}</div>', unsafe_allow_html=True)
+        
+    # 2. 바둑판 격자 렌더링 (0~8 행)
+    for r in range(9):
+        cols = st.columns(10)
+        # 좌측 행 좌표 인덱스 출력
+        cols[0].markdown(f'<div class="coord-label">{r}</div>', unsafe_allow_html=True)
+        
+        for c in range(9):
+            cell_val = board.get(r, c)
+            is_neutral = (cell_val == NEUTRAL)
+            is_last = last_move_coord and last_move_coord[0] == r and last_move_coord[1] == c
+            
+            # 유니코드 입체 기호 결정
+            if cell_val == BLUE:
+                symbol = "🔵"
+                if is_last:
+                    symbol = "🔵🎯" # 마지막 착수 강조
+            elif cell_val == ORANGE:
+                symbol = "orange" # 아래에서 특수 아이콘 대체
+                symbol = "🟠"
+                if is_last:
+                    symbol = "🟠🎯" # 마지막 착수 강조
+            elif is_neutral:
+                symbol = "🏰" # 중립 성 표시
+            else:
+                # 빈칸일 때 영토 시각화 맵과 마지막 수 여부에 따라 마크 결정
+                terr_owner = territory_map.get(f"{r}_{c}")
+                if terr_owner == BLUE:
+                    symbol = "🔹" # 연파랑 영토
+                elif terr_owner == ORANGE:
+                    symbol = "🔸" # 연주황 영토
+                elif is_last:
+                    symbol = "🎯"
+                else:
+                    symbol = "➕" # 바둑판 교차점 느낌
+            
+            # 버튼 클릭 액션 핸들링 (착수는 EMPTY 일 때만 활성화)
+            is_disabled = game.game_over or game.current_player != BLUE or cell_val in (BLUE, ORANGE, NEUTRAL)
+            
+            if cols[c+1].button(symbol, key=f"cell_{r}_{c}", disabled=is_disabled):
+                # 유저 착수 처리
+                captured_occurred = game.play_move(r, c)
+                st.session_state.game_moves.append([r, c])
+                
+                log_msg = f"BLUE (Human) -> ({r}, {c})"
+                if captured_occurred:
+                    log_msg += " [CAPTURE 발생!]"
+                st.session_state.logs.append(log_msg)
+                st.rerun()
 
 # ----------------- 종료 및 기록 폼 렌더링 -----------------
 if game.game_over:
