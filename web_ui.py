@@ -18,43 +18,6 @@ st.set_page_config(
 # 디버그 콘솔 출력 여부 플래그
 DEBUG = False
 
-# ----------------- 쿼리 파라미터 기반 착수 처리 -----------------
-# 자바스크립트 없이 100% 신뢰할 수 있는 HTML <a> 태그 쿼리 매개변수 방식의 착수
-if "move" in st.query_params:
-    move_val = st.query_params["move"]
-    # 즉시 쿼리 매개변수 제거하여 새로고침 시 중복 착수 방지
-    st.query_params.clear()
-    
-    try:
-        r, c = map(int, move_val.split("_"))
-        
-        # 세션에 게임이 없는 상황 방지
-        if "game" not in st.session_state:
-            st.session_state.game = GameState()
-            st.session_state.game.is_copy = False
-        if "game_moves" not in st.session_state:
-            st.session_state.game_moves = []
-        if "logs" not in st.session_state:
-            st.session_state.logs = []
-            
-        game = st.session_state.game
-        if not game.game_over and game.current_player == BLUE:
-            # 돌이 이미 놓여진 곳이 아닌지 검증
-            if game.board.get(r, c) == EMPTY:
-                captured_occurred = game.play_move(r, c)
-                st.session_state.game_moves.append([r, c])
-                
-                log_msg = f"BLUE (Human) -> ({r}, {c})"
-                if captured_occurred:
-                    log_msg += " [CAPTURE 발생!]"
-                st.session_state.logs.append(log_msg)
-                
-                # 턴이 ORANGE로 넘어가서 AI Think가 실행되도록 rerun
-                st.rerun()
-    except Exception as e:
-        if DEBUG:
-            print(f"[QUERY ERROR] {e}")
-
 # 세션 상태 초기화
 if "game" not in st.session_state:
     st.session_state.game = GameState()
@@ -110,7 +73,7 @@ def save_record(game_num, winner_str, reason, total_moves, memo):
         
     st.success(f"Game {game_num} 결과가 성공적으로 기록되었습니다!")
 
-# ----------------- SVG 바둑판 생성기 -----------------
+# ----------------- SVG 바둑판 생성기 (오직 시각 효과 집중) -----------------
 def generate_board_svg(game, territory_map, last_move_coord):
     board = game.board
     size = 500
@@ -119,7 +82,7 @@ def generate_board_svg(game, territory_map, last_move_coord):
     
     svg = []
     # 둥근 모서리와 그림자가 들어간 고풍스러운 바둑판 나무 배경 및 검은색 외곽선
-    svg.append(f'<svg width="100%" height="auto" viewBox="0 0 {size} {size}" xmlns="http://www.w3.org/2000/svg" style="background-color: #df9e51; border-radius: 12px; box-shadow: 0 12px 24px rgba(0,0,0,0.45); border: 5px solid #2e1e0a; display: block; margin: auto;">')
+    svg.append(f'<svg width="500" height="500" viewBox="0 0 {size} {size}" xmlns="http://www.w3.org/2000/svg" style="background-color: #df9e51; border-radius: 12px; box-shadow: 0 12px 24px rgba(0,0,0,0.45); border: 5px solid #2e1e0a; display: block;">')
     
     # 3D 효과를 위한 그라데이션 및 필터 정의
     svg.append('<defs>')
@@ -205,20 +168,6 @@ def generate_board_svg(game, territory_map, last_move_coord):
                 # 중립 성 3D 엠블럼처럼 렌더링
                 svg.append(f'<text x="{x}" y="{y}" font-size="30" text-anchor="middle" dominant-baseline="central" filter="url(#shadow)" style="user-select:none;">🏰</text>')
                 
-    # 투명 클릭 영역 (BLUE Human 차례에 착수 가능한 빈 칸들만 링크 생성)
-    if not game.game_over and game.current_player == BLUE:
-        for r in range(9):
-            for c in range(9):
-                cell_val = board.get(r, c)
-                if cell_val == EMPTY:
-                    x = grid_start + c * grid_gap
-                    y = grid_start + r * grid_gap
-                    svg.append(f'<a href="?move={r}_{c}" target="_self">')
-                    svg.append(f'<circle cx="{x}" cy="{y}" r="22" fill="transparent" class="empty-intersect" cursor="pointer">')
-                    svg.append(f'<title>착수: ({r}, {c})</title>')
-                    svg.append('</circle>')
-                    svg.append('</a>')
-                    
     svg.append('</svg>')
     return "\n".join(svg)
 
@@ -293,17 +242,109 @@ if not game.game_over and game.current_player == ORANGE:
             
         st.rerun()
 
-# ----------------- 바둑판 전용 호버 효과 및 CSS -----------------
+# ----------------- 바둑판 전용 절대배치 CSS -----------------
 board_style = """
 <style>
-/* 교차점 호버 시 반투명 파란 돌 및 가이드 테두리 잔상 표시 */
-circle.empty-intersect {
-    transition: fill 0.12s ease, stroke 0.12s ease;
+/* 바둑판 고정 크기 500px 래퍼 */
+.board-wrapper {
+    position: relative !important;
+    width: 500px !important;
+    height: 500px !important;
+    margin: 0 auto !important;
 }
-circle.empty-intersect:hover {
-    fill: rgba(0, 85, 255, 0.28) !important;
-    stroke: #0055ff !important;
-    stroke-width: 2px !important;
+
+/* 배경 SVG 레이어 */
+.board-background-svg {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 500px !important;
+    height: 500px !important;
+    z-index: 1 !important;
+    pointer-events: none !important;
+}
+
+/* 위에 얹어지는 투명 버튼 오버레이 */
+.button-grid-overlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 500px !important;
+    height: 500px !important;
+    z-index: 2 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* 행(stHorizontalBlock) 레이아웃 설정 */
+.button-grid-overlay div[data-testid="stHorizontalBlock"] {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 0px !important;
+    width: 500px !important;
+    margin: 0px !important;
+    padding: 0px !important;
+}
+
+/* 첫 번째 좌표 행 높이 */
+.button-grid-overlay div[data-testid="stHorizontalBlock"]:first-child {
+    height: 40px !important;
+}
+/* 나머지 실제 격자 9개 행 높이 */
+.button-grid-overlay div[data-testid="stHorizontalBlock"]:not(:first-child) {
+    height: 50px !important;
+}
+
+/* 열(column) 레이아웃 설정 */
+.button-grid-overlay div[data-testid="column"] {
+    padding: 0px !important;
+    margin: 0px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+/* 첫 번째 좌표 열 너비 */
+.button-grid-overlay div[data-testid="column"]:first-child {
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+}
+/* 나머지 실제 격자 9개 열 너비 */
+.button-grid-overlay div[data-testid="column"]:not(:first-child) {
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+}
+
+/* 투명 클릭 버튼 디자인 */
+.button-grid-overlay .stButton > button {
+    width: 44px !important;
+    height: 44px !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 50% !important;
+    padding: 0px !important;
+    margin: 0px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transition: background-color 0.12s, border 0.12s;
+}
+
+/* 빈 교차점 호버 시 파란 돌 가이드 잔상 표시 */
+.button-grid-overlay .stButton > button:not(:disabled):hover {
+    background-color: rgba(0, 85, 255, 0.28) !important;
+    border: 2.5px solid #0055ff !important;
+}
+
+/* 이미 돌이 있는 곳이나 상대 턴일 때 비활성화 투명 상태 유지 */
+.button-grid-overlay .stButton > button:disabled {
+    background: transparent !important;
+    border: none !important;
+    cursor: default !important;
 }
 </style>
 """
@@ -360,9 +401,44 @@ col_game_board, col_panel = st.columns([1.5, 1])
 with col_game_board:
     st.subheader("🏁 9x9 그레이트 킹덤 바둑판")
     
-    # 고해상도 SVG 바둑판 렌더링
+    # 바둑판 래퍼 열기 (상대 배치 컨테이너)
+    st.markdown('<div class="board-wrapper">', unsafe_allow_html=True)
+    
+    # 1. 고해상도 SVG 바둑판을 배경 레이어로 배치
     board_svg = generate_board_svg(game, territory_map, last_move_coord)
-    st.markdown(board_svg, unsafe_allow_html=True)
+    st.markdown(f'<div class="board-background-svg">{board_svg}</div>', unsafe_allow_html=True)
+    
+    # 2. 투명 버튼 오버레이 레이어 겹쳐서 배치
+    st.markdown('<div class="button-grid-overlay">', unsafe_allow_html=True)
+    
+    # 상단 열 좌표를 위한 빈 줄(투명 높이 확보용)
+    cols_header = st.columns(10)
+    for c in range(10):
+        cols_header[c].write("")
+        
+    # 9x9 격자 투명 버튼들 배치
+    for r in range(9):
+        cols = st.columns(10)
+        # 첫 열 빈 공간 (좌측 좌표축 영역 공간 확보)
+        cols[0].write("")
+        
+        for c in range(9):
+            cell_val = board.get(r, c)
+            is_disabled = game.game_over or game.current_player != BLUE or cell_val in (BLUE, ORANGE, NEUTRAL)
+            
+            # 투명 버튼 클릭 시 즉시 착수 및 새로고침
+            if cols[c+1].button("", key=f"cell_{r}_{c}", disabled=is_disabled):
+                captured_occurred = game.play_move(r, c)
+                st.session_state.game_moves.append([r, c])
+                
+                log_msg = f"BLUE (Human) -> ({r}, {c})"
+                if captured_occurred:
+                    log_msg += " [CAPTURE 발생!]"
+                st.session_state.logs.append(log_msg)
+                st.rerun()
+                
+    st.markdown('</div>', unsafe_allow_html=True) # button-grid-overlay 닫기
+    st.markdown('</div>', unsafe_allow_html=True) # board-wrapper 닫기
 
 # ----------------- 종료 및 기록 폼 렌더링 -----------------
 if game.game_over:
