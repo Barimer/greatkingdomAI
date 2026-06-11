@@ -160,4 +160,4 @@ def run_self_play_simulation(num_games=500, depth=3):
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
-    run_self_play_simulation(num_games=8, depth=3)
+    run_self_play_simulation(num_games=20, depth=3)
