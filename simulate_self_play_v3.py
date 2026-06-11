@@ -157,6 +157,13 @@ def run_self_play_simulation(num_games=500, depth=3):
     
     # 결과 분석 실행
     run_analysis(results)
+    
+    # 종료 직전 상태 분석기(Final Position Analysis) 추가 연동
+    try:
+        from analysis.final_position_analyzer import run_analysis_pipeline
+        run_analysis_pipeline()
+    except Exception as e:
+        print(f"Failed to run final position analysis pipeline: {e}", flush=True)
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
