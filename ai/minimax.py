@@ -61,31 +61,30 @@ def copy_game_state(game_state):
     """현재 게임 상태를 안전하게 복사하여 독립적인 다음 수를 시뮬레이션할 수 있게 합니다."""
     from engine.game_state import GameState
 
-    new_state = GameState()
+    new_state = GameState.__new__(GameState)
     new_state.board = game_state.board.copy()
     new_state.current_player = game_state.current_player
     new_state.consecutive_passes = game_state.consecutive_passes
     new_state.winner = game_state.winner
     new_state.game_over = game_state.game_over
     new_state.is_copy = True
+    new_state.hash_val = game_state.hash_val
     return new_state
 
 
+ALL_CELLS_SORTED = sorted(
+    [(r, c) for r in range(9) for c in range(9)],
+    key=lambda coord: abs(coord[0] - 4) + abs(coord[1] - 4)
+)
+
 def get_legal_moves(game_state):
     """현재 보드 상태에서 착수 가능한 모든 합법 수 좌표 목록 및 'pass' 행동을 반환합니다."""
-    size = game_state.board.size
-    center = size // 2
+    grid = game_state.board.grid
     moves = []
 
-    for r in range(size):
-        for c in range(size):
-            if game_state.board.get(r, c) == EMPTY:
-                moves.append((r, c))
-
-    # 중앙 좌표와의 맨해튼 거리가 가까운 순으로 정렬
-    moves.sort(
-        key=lambda coord: abs(coord[0] - center) + abs(coord[1] - center)
-    )
+    for r, c in ALL_CELLS_SORTED:
+        if grid[r][c] == EMPTY:
+            moves.append((r, c))
 
     # 마지막으로 pass를 탐색 후보에 추가
     moves.append("pass")
@@ -169,7 +168,7 @@ def alphabeta(state, depth, alpha, beta, maximizing_player, target_player):
     STATS["nodes_visited"] += 1
 
     # 1. Zobrist 해시 키 생성
-    hash_key = get_board_hash(state.board, state.current_player)
+    hash_key = state.hash_val
 
     # 2. 치환표 캐시 검사
     cached_val = lookup_entry(hash_key, depth, alpha, beta)

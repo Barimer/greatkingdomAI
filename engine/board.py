@@ -51,8 +51,8 @@ class Board:
 
     def copy(self):
 
-        new_board = Board(self.size)
-
+        new_board = Board.__new__(Board)
+        new_board.size = self.size
         new_board.grid = [
             row[:] for row in self.grid
         ]

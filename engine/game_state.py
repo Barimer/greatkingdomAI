@@ -16,6 +16,7 @@ class GameState:
     def __init__(self):
 
         from engine.board import Board
+        from ai.zobrist import get_board_hash
 
         self.board = Board()
 
@@ -24,6 +25,7 @@ class GameState:
         self.winner = None
         self.game_over = False
         self.is_copy = False  # 시뮬레이션 여부 판단용 기본값
+        self.hash_val = get_board_hash(self.board, self.current_player)
 
     def opponent(self):
 
@@ -57,6 +59,11 @@ class GameState:
                     safe_stones.update(group)
 
         # 이제 착수를 수행합니다.
+        from ai.zobrist import ZOBRIST_TABLE, ZOBRIST_PLAYER
+        from engine.board import EMPTY
+        self.hash_val ^= ZOBRIST_TABLE[r][c][EMPTY]
+        self.hash_val ^= ZOBRIST_TABLE[r][c][self.current_player]
+
         self.board.place(
             r,
             c,
@@ -99,6 +106,8 @@ class GameState:
 
             for pr, pc in captured:
                 self.board.remove(pr, pc)
+                self.hash_val ^= ZOBRIST_TABLE[pr][pc][opponent]
+                self.hash_val ^= ZOBRIST_TABLE[pr][pc][EMPTY]
 
             # [개선] 가상 시뮬레이션 복사본이 아닐 때만 콘솔에 캡처 발생 출력
             if not getattr(self, "is_copy", False):
@@ -112,6 +121,7 @@ class GameState:
             return True
 
         self.current_player = opponent
+        self.hash_val ^= ZOBRIST_PLAYER
 
         return False
 
@@ -128,6 +138,8 @@ class GameState:
             return True
 
         self.current_player = self.opponent()
+        from ai.zobrist import ZOBRIST_PLAYER
+        self.hash_val ^= ZOBRIST_PLAYER
 
         return False
 
