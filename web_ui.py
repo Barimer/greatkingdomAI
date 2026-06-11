@@ -2,11 +2,13 @@ import streamlit as st
 import os
 import json
 import time
+import base64
 
 from engine.game_state import GameState
 from engine.board import BLUE, ORANGE, EMPTY, NEUTRAL
 from ai.minimax import find_best_move, LAST_AI_DECISION
 from engine.territory import calculate_territory
+from streamlit_image_coordinates import streamlit_image_coordinates
 
 # 페이지 설정
 st.set_page_config(
@@ -25,9 +27,11 @@ if "game" not in st.session_state:
 if "game_moves" not in st.session_state:
     st.session_state.game_moves = []
 if "logs" not in st.session_state:
-    st.session_state.logs = ["대국이 새롭게 기동되었습니다. 당신은 BLUE(선공)입니다. 교차점을 클릭하여 착수하세요."]
+    st.session_state.logs = ["대국이 새롭게 기동되었습니다. 당신은 BLUE(선공)입니다. 바둑판의 교차점을 클릭하여 착수하세요."]
 if "show_territory" not in st.session_state:
     st.session_state.show_territory = False
+if "last_processed_click" not in st.session_state:
+    st.session_state.last_processed_click = None
 if "test_records" not in st.session_state:
     record_path = "analysis/human_test_records.json"
     if os.path.exists(record_path):
@@ -43,7 +47,8 @@ def reset_game():
     st.session_state.game = GameState()
     st.session_state.game.is_copy = False
     st.session_state.game_moves = []
-    st.session_state.logs = ["대국이 새롭게 기동되었습니다. 당신은 BLUE(선공)입니다. 교차점을 클릭하여 착수하세요."]
+    st.session_state.logs = ["대국이 새롭게 기동되었습니다. 당신은 BLUE(선공)입니다. 바둑판의 교차점을 클릭하여 착수하세요."]
+    st.session_state.last_processed_click = None
     st.rerun()
 
 def save_record(game_num, winner_str, reason, total_moves, memo):
@@ -73,7 +78,7 @@ def save_record(game_num, winner_str, reason, total_moves, memo):
         
     st.success(f"Game {game_num} 결과가 성공적으로 기록되었습니다!")
 
-# ----------------- SVG 바둑판 생성기 (오직 시각 효과 집중) -----------------
+# ----------------- SVG 바둑판 생성기 -----------------
 def generate_board_svg(game, territory_map, last_move_coord):
     board = game.board
     size = 500
@@ -242,114 +247,6 @@ if not game.game_over and game.current_player == ORANGE:
             
         st.rerun()
 
-# ----------------- 바둑판 전용 절대배치 CSS -----------------
-board_style = """
-<style>
-/* 바둑판 고정 크기 500px 래퍼 */
-.board-wrapper {
-    position: relative !important;
-    width: 500px !important;
-    height: 500px !important;
-    margin: 0 auto !important;
-}
-
-/* 배경 SVG 레이어 */
-.board-background-svg {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 500px !important;
-    height: 500px !important;
-    z-index: 1 !important;
-    pointer-events: none !important;
-}
-
-/* 위에 얹어지는 투명 버튼 오버레이 */
-.button-grid-overlay {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 500px !important;
-    height: 500px !important;
-    z-index: 2 !important;
-    display: flex !important;
-    flex-direction: column !important;
-}
-
-/* 행(stHorizontalBlock) 레이아웃 설정 */
-.button-grid-overlay div[data-testid="stHorizontalBlock"] {
-    display: flex !important;
-    flex-direction: row !important;
-    gap: 0px !important;
-    width: 500px !important;
-    margin: 0px !important;
-    padding: 0px !important;
-}
-
-/* 첫 번째 좌표 행 높이 */
-.button-grid-overlay div[data-testid="stHorizontalBlock"]:first-child {
-    height: 40px !important;
-}
-/* 나머지 실제 격자 9개 행 높이 */
-.button-grid-overlay div[data-testid="stHorizontalBlock"]:not(:first-child) {
-    height: 50px !important;
-}
-
-/* 열(column) 레이아웃 설정 */
-.button-grid-overlay div[data-testid="column"] {
-    padding: 0px !important;
-    margin: 0px !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-}
-
-/* 첫 번째 좌표 열 너비 */
-.button-grid-overlay div[data-testid="column"]:first-child {
-    width: 40px !important;
-    min-width: 40px !important;
-    max-width: 40px !important;
-}
-/* 나머지 실제 격자 9개 열 너비 */
-.button-grid-overlay div[data-testid="column"]:not(:first-child) {
-    width: 50px !important;
-    min-width: 50px !important;
-    max-width: 50px !important;
-}
-
-/* 투명 클릭 버튼 디자인 */
-.button-grid-overlay .stButton > button {
-    width: 44px !important;
-    height: 44px !important;
-    background: transparent !important;
-    border: none !important;
-    border-radius: 50% !important;
-    padding: 0px !important;
-    margin: 0px !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    cursor: pointer !important;
-    box-shadow: none !important;
-    transition: background-color 0.12s, border 0.12s;
-}
-
-/* 빈 교차점 호버 시 파란 돌 가이드 잔상 표시 */
-.button-grid-overlay .stButton > button:not(:disabled):hover {
-    background-color: rgba(0, 85, 255, 0.28) !important;
-    border: 2.5px solid #0055ff !important;
-}
-
-/* 이미 돌이 있는 곳이나 상대 턴일 때 비활성화 투명 상태 유지 */
-.button-grid-overlay .stButton > button:disabled {
-    background: transparent !important;
-    border: none !important;
-    cursor: default !important;
-}
-</style>
-"""
-st.markdown(board_style, unsafe_allow_html=True)
-
 # ----------------- 영토 분석 맵 계산 -----------------
 territory_map = {}
 if st.session_state.show_territory:
@@ -401,44 +298,55 @@ col_game_board, col_panel = st.columns([1.5, 1])
 with col_game_board:
     st.subheader("🏁 9x9 그레이트 킹덤 바둑판")
     
-    # 바둑판 래퍼 열기 (상대 배치 컨테이너)
-    st.markdown('<div class="board-wrapper">', unsafe_allow_html=True)
-    
-    # 1. 고해상도 SVG 바둑판을 배경 레이어로 배치
+    # 1. 고해상도 SVG 바둑판 생성
     board_svg = generate_board_svg(game, territory_map, last_move_coord)
-    st.markdown(f'<div class="board-background-svg">{board_svg}</div>', unsafe_allow_html=True)
     
-    # 2. 투명 버튼 오버레이 레이어 겹쳐서 배치
-    st.markdown('<div class="button-grid-overlay">', unsafe_allow_html=True)
+    # 2. SVG를 base64 URL로 인코딩
+    b64_svg = base64.b64encode(board_svg.encode("utf-8")).decode("utf-8")
+    svg_url = f"data:image/svg+xml;base64,{b64_svg}"
     
-    # 상단 열 좌표를 위한 빈 줄(투명 높이 확보용)
-    cols_header = st.columns(10)
-    for c in range(10):
-        cols_header[c].write("")
+    # 3. streamlit-image-coordinates 컴포넌트를 이용해 이미지 렌더링 및 클릭 좌표 캡처
+    # (새로고침 없이 WebSocket 연결 유지를 통해 세션 상태 보존)
+    value = streamlit_image_coordinates(
+        svg_url,
+        width=500,
+        height=500,
+        key="board_coordinates"
+    )
+    
+    # 4. 클릭 좌표 처리 및 중복 방지 연산
+    if value is not None:
+        click_key = (value["x"], value["y"])
         
-    # 9x9 격자 투명 버튼들 배치
-    for r in range(9):
-        cols = st.columns(10)
-        # 첫 열 빈 공간 (좌측 좌표축 영역 공간 확보)
-        cols[0].write("")
-        
-        for c in range(9):
-            cell_val = board.get(r, c)
-            is_disabled = game.game_over or game.current_player != BLUE or cell_val in (BLUE, ORANGE, NEUTRAL)
+        # 마지막으로 처리된 클릭 좌표와 다를 때만 연산 진행
+        if click_key != st.session_state.last_processed_click:
+            st.session_state.last_processed_click = click_key
             
-            # 투명 버튼 클릭 시 즉시 착수 및 새로고침
-            if cols[c+1].button("", key=f"cell_{r}_{c}", disabled=is_disabled):
-                captured_occurred = game.play_move(r, c)
-                st.session_state.game_moves.append([r, c])
-                
-                log_msg = f"BLUE (Human) -> ({r}, {c})"
-                if captured_occurred:
-                    log_msg += " [CAPTURE 발생!]"
-                st.session_state.logs.append(log_msg)
-                st.rerun()
-                
-    st.markdown('</div>', unsafe_allow_html=True) # button-grid-overlay 닫기
-    st.markdown('</div>', unsafe_allow_html=True) # board-wrapper 닫기
+            x, y = value["x"], value["y"]
+            
+            # 클릭 좌표 ➔ 격자 좌표 변환 공식 (오차 반올림 연산)
+            c_click = round((x - 40) / 50)
+            r_click = round((y - 40) / 50)
+            
+            # 가장 가까운 교차점 중심 좌표 계산
+            center_x = 40 + c_click * 50
+            center_y = 40 + r_click * 50
+            
+            # 클릭 지점과 교차점과의 유클리드 거리 산출
+            dist = ((x - center_x) ** 2 + (y - center_y) ** 2) ** 0.5
+            
+            # 오클릭 임계값(20px 이내) 및 착수 유효성 검사
+            if dist <= 20 and 0 <= r_click < 9 and 0 <= c_click < 9:
+                if not game.game_over and game.current_player == BLUE:
+                    if board.get(r_click, c_click) == EMPTY:
+                        captured_occurred = game.play_move(r_click, c_click)
+                        st.session_state.game_moves.append([r_click, c_click])
+                        
+                        log_msg = f"BLUE (Human) -> ({r_click}, {c_click})"
+                        if captured_occurred:
+                            log_msg += " [CAPTURE 발생!]"
+                        st.session_state.logs.append(log_msg)
+                        st.rerun()
 
 # ----------------- 종료 및 기록 폼 렌더링 -----------------
 if game.game_over:
