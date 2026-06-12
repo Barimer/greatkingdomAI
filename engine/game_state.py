@@ -41,6 +41,14 @@ class GameState:
 
         opponent = self.opponent()
 
+        # 상대 영토 내부 착수 금지 규칙 적용
+        from engine.territory import calculate_territory_details
+        from engine.board import BLUE, ORANGE
+        _, _, blue_coords, orange_coords = calculate_territory_details(self.board)
+        opponent_territory = set(orange_coords) if opponent == ORANGE else set(blue_coords)
+        if (r, c) in opponent_territory:
+            raise ValueError("Cannot play inside opponent's territory")
+
         # 착수하기 전 보드 상태에서 상대방의 안전 그룹을 미리 수집
         safe_stones = set()
         checked_pre = set()
@@ -120,6 +128,9 @@ class GameState:
             self.game_over = True
             return True
 
+        if hasattr(self, "_opponent_territory"):
+            self._opponent_territory = None
+
         self.current_player = opponent
         self.hash_val ^= ZOBRIST_PLAYER
 
@@ -137,6 +148,8 @@ class GameState:
             self.check_winner_by_territory()
             return True
 
+        if hasattr(self, "_opponent_territory"):
+            self._opponent_territory = None
         self.current_player = self.opponent()
         from ai.zobrist import ZOBRIST_PLAYER
         self.hash_val ^= ZOBRIST_PLAYER

@@ -72,6 +72,8 @@ def copy_game_state(game_state):
     new_state.game_over = game_state.game_over
     new_state.is_copy = True
     new_state.hash_val = game_state.hash_val
+    if hasattr(game_state, "_opponent_territory"):
+        new_state._opponent_territory = game_state._opponent_territory
     return new_state
 
 
@@ -81,16 +83,152 @@ ALL_CELLS_SORTED = sorted(
 )
 
 def get_legal_moves(game_state):
-    """현재 보드 상태에서 착수 가능한 모든 합법 수 좌표 목록 및 'pass' 행동을 반환합니다."""
+    """현재 보드 상태에서 착수 가능한 모든 합법 수 좌표 목록 및 'pass' 행동을 반환합니다.
+    (상대 플레이어의 영토 내부 착수는 제한됩니다.)
+    """
+    from engine.territory import calculate_territory_details
+    from engine.board import BLUE, ORANGE, EMPTY
+
     grid = game_state.board.grid
+    opponent = game_state.opponent()
+    
+    # 상대 영토 계산 (캐싱 적용)
+    if hasattr(game_state, "_opponent_territory") and game_state._opponent_territory is not None:
+        opponent_territory = game_state._opponent_territory
+    else:
+        _, _, blue_coords, orange_coords = calculate_territory_details(game_state.board)
+        opponent_territory = set(orange_coords) if opponent == ORANGE else set(blue_coords)
+        game_state._opponent_territory = opponent_territory
+
     moves = []
 
     for r, c in ALL_CELLS_SORTED:
         if grid[r][c] == EMPTY:
-            moves.append((r, c))
+            if (r, c) not in opponent_territory:
+                moves.append((r, c))
 
     # 마지막으로 pass를 탐색 후보에 추가
     moves.append("pass")
+
+    # 수정 3: 강제 후보 필터링 적용 (위험 탈출 수 강제)
+    if not getattr(game_state, "is_copy", False) and game_state.current_player == ORANGE:
+        from ai.evaluation import evaluate_detailed
+        details = evaluate_detailed(game_state.board, game_state.current_player)
+        current_min_lib = details.get("my_min_liberty", 99)
+
+        # ----------------- [1단계: 최상위 공격 필터링] -----------------
+        # 내 수비 상태와 무관하게, 즉시 상대 돌을 캡처하거나 양단수를 치는 찬스가 있다면 즉각 공격을 감행
+        capture_moves = []
+        double_atari_moves = []
+        atari_moves = []
+        other_moves = []
+        
+        for move in moves:
+            if move == "pass":
+                other_moves.append(move)
+                continue
+            next_state = copy_game_state(game_state)
+            try:
+                next_state.play_move(move[0], move[1])
+            except ValueError:
+                continue
+            
+            # 상대방 기준 평가
+            next_details = evaluate_detailed(next_state.board, game_state.current_player)
+            opp_min_lib = next_details.get("opp_min_liberty", 99)
+            opp_atari_groups = next_details.get("opp_atari_groups", 0)
+            
+            # A. 즉시 캡처 (게임 승리)
+            if next_state.game_over and next_state.winner == game_state.current_player:
+                capture_moves.append(move)
+            # B. 양단수 (Double Atari)
+            elif opp_atari_groups >= 2:
+                double_atari_moves.append(move)
+            # C. 일반 단수 (Atari)
+            elif opp_min_lib == 1:
+                atari_moves.append(move)
+            else:
+                other_moves.append(move)
+                
+        if capture_moves:
+            return capture_moves
+        if double_atari_moves:
+            return double_atari_moves
+
+        # ----------------- [2단계: 생존 수비 비상 모드] -----------------
+        # 즉시 승리하는 공격 찬스가 없을 때, 내 돌의 사활/포위 위기를 최우선 방어
+        if current_min_lib <= 2:
+            filtered_moves = []
+            really_safe_moves = []
+            
+            # 대마의 인접 활로 좌표 세트 확보
+            my_min_lib_coords = details.get("my_min_liberty_coords", set())
+            
+            # 루프를 돌 대상 수순을 대마의 인접 활로 좌표로 한정 (없으면 폴백으로 전체 moves)
+            target_moves = [m for m in moves if m in my_min_lib_coords] if my_min_lib_coords else moves
+            
+            if current_min_lib == 1:
+                # 1단계: 자유도가 2 이상으로 회복되는 수순 탐색
+                for move in target_moves:
+                    if move == "pass":
+                        continue
+                    next_state = copy_game_state(game_state)
+                    try:
+                        next_state.play_move(move[0], move[1])
+                    except ValueError:
+                        continue
+                    next_details = evaluate_detailed(next_state.board, game_state.current_player)
+                    next_min_lib = next_details.get("my_min_liberty", 99)
+                    if next_min_lib > 1:
+                        filtered_moves.append(move)
+                        if next_details.get("my_min_lib_fl3", 3) > 0:
+                            really_safe_moves.append(move)
+                
+                # 2단계: 1단계가 없다면, 자유도 1로 연명이라도 하는 수순 탐색 (선 뻗기 등 수용)
+                if not filtered_moves:
+                    for move in target_moves:
+                        if move == "pass":
+                            continue
+                        next_state = copy_game_state(game_state)
+                        try:
+                            next_state.play_move(move[0], move[1])
+                        except ValueError:
+                            continue
+                        next_details = evaluate_detailed(next_state.board, game_state.current_player)
+                        next_min_lib = next_details.get("my_min_liberty", 99)
+                        if next_min_lib == 1:
+                            filtered_moves.append(move)
+                            if next_details.get("my_min_lib_fl3", 3) > 0:
+                                really_safe_moves.append(move)
+                            
+            elif current_min_lib == 2:
+                # 자유도 2 상태에서는, 착수 후 자유도가 2 이상으로 유지되거나 늘어나는 수순만 후보로 삼아 갇힘 회피
+                for move in target_moves:
+                    if move == "pass":
+                        continue
+                    next_state = copy_game_state(game_state)
+                    try:
+                        next_state.play_move(move[0], move[1])
+                    except ValueError:
+                        continue
+                    next_details = evaluate_detailed(next_state.board, game_state.current_player)
+                    next_min_lib = next_details.get("my_min_liberty", 99)
+                    if next_min_lib >= 2:
+                        filtered_moves.append(move)
+                        if next_details.get("my_min_lib_fl3", 3) > 0:
+                            really_safe_moves.append(move)
+            
+            if filtered_moves:
+                if really_safe_moves:
+                    return filtered_moves
+                else:
+                    other_all = [m for m in moves if m not in filtered_moves]
+                    return filtered_moves + other_all
+
+        # ----------------- [3단계: 일반 상황 - 단수 우선 정렬] -----------------
+        if atari_moves:
+            return atari_moves + other_moves
+
     return moves
 
 
@@ -99,6 +237,9 @@ def find_best_move(game_state, depth=2):
 
     탐색된 후보들 중 상위 10개 수의 항목별 평가 점수를 출력하여 의사결정 로그를 생성합니다.
     """
+    from ai.evaluation import clear_future_liberty_cache
+    clear_future_liberty_cache()
+    
     target_player = game_state.current_player
 
     if game_state.game_over:

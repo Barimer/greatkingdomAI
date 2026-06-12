@@ -1,8 +1,15 @@
 from collections import deque
 from engine.board import EMPTY, BLUE, ORANGE
 
+_TERRITORY_CACHE = {}
+
 
 def calculate_territory_details(board):
+    # board.grid의 튜플 상태를 캐싱 키로 사용 (성능 폭증)
+    grid_tuple = tuple(tuple(row) for row in board.grid)
+    if grid_tuple in _TERRITORY_CACHE:
+        return _TERRITORY_CACHE[grid_tuple]
+
     size = board.size
     visited = set()
     blue_score = 0
@@ -68,7 +75,9 @@ def calculate_territory_details(board):
     blue_coords.sort()
     orange_coords.sort()
 
-    return blue_score, orange_score, blue_coords, orange_coords
+    res = blue_score, orange_score, blue_coords, orange_coords
+    _TERRITORY_CACHE[grid_tuple] = res
+    return res
 
 
 def calculate_territory(board):
