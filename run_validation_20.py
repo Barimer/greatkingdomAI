@@ -270,7 +270,7 @@ def main():
             )
         md.append("")
 
-    report_path = r"C:\Users\User\.gemini\antigravity-cli\brain\a1bc882c-48af-4052-945b-e63582bf964c\validation_20_games_report.md"
+    report_path = r"C:\Users\User\source\repos\greatkingdomAI\validation_after_optimization.md"
     with open(report_path, "w", encoding="utf-8") as f:
         f.write("\n".join(md))
         

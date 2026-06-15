@@ -47,8 +47,8 @@ def lookup_entry(hash_key, depth, alpha, beta):
     return None
 
 
-def store_entry(hash_key, depth, value, flag):
-    """현재 노드의 탐색 깊이와 정확도 플래그를 치환표에 등록합니다."""
+def store_entry(hash_key, depth, value, flag, best_move=None):
+    """현재 노드의 탐색 깊이와 정확도 플래그, 최적의 수순을 치환표에 등록합니다."""
     if (
         hash_key not in TRANSPOSITION_TABLE
         or TRANSPOSITION_TABLE[hash_key]["depth"] <= depth
@@ -57,7 +57,109 @@ def store_entry(hash_key, depth, value, flag):
             "depth": depth,
             "value": value,
             "flag": flag,
+            "best_move": best_move,
         }
+
+
+def order_moves(state, legal_moves, depth, maximizing_player, target_player):
+    """Alpha-Beta Pruning 효율을 높이기 위해 착수 후보 목록을 가볍고 빠르게 가중치 정렬합니다. (evaluate 호출 없음)"""
+    if len(legal_moves) <= 1:
+        return legal_moves
+
+    hash_key = state.hash_val
+    best_move = None
+
+    # 1. 치환표(TT)에 저장된 최적의 수순이 있으면 최우선순위로 설정
+    if hash_key in TRANSPOSITION_TABLE:
+        best_move = TRANSPOSITION_TABLE[hash_key].get("best_move")
+
+    # 각 move별 가중치 매기기
+    from engine.capture import get_group, get_liberties
+    from engine.board import EMPTY
+    
+    scored_moves = []
+    
+    # 2. 착수 전 내 돌들의 위험 그룹(자유도가 1 또는 2)의 이웃 활로 좌표들을 파악 (Defensive/Escape용)
+    my_color = state.current_player
+    opp_color = state.opponent()
+    board = state.board
+    
+    danger_liberties = set()
+    checked_my = set()
+    for r in range(board.size):
+        for c in range(board.size):
+            if board.get(r, c) == my_color and (r, c) not in checked_my:
+                g = get_group(board, r, c)
+                checked_my.update(g)
+                libs = get_liberties(board, g)
+                if len(libs) <= 2:
+                    danger_liberties.update(libs) # 내 위험한 돌들의 활로 좌표 모음
+
+    for move in legal_moves:
+        if move == best_move:
+            continue
+        if move == "pass":
+            # 패스는 가장 뒤로 보냄
+            scored_moves.append((move, -999999))
+            continue
+        
+        # 기본 점수는 격자 중앙 지향성 (중앙에 가까울수록 가산점)
+        dist_from_center = abs(move[0] - 4) + abs(move[1] - 4)
+        score = 100 - dist_from_center  # 기본 점수: 92 ~ 100 점
+        
+        # 가상 착수 (경량 연산)
+        next_state = copy_game_state(state)
+        is_capture = False
+        try:
+            # play_move는 캡처 시 True 반환
+            is_capture = next_state.play_move(move[0], move[1])
+        except ValueError:
+            # 둘 수 없는 곳(자충 등)은 점수를 아주 낮춤
+            scored_moves.append((move, -50000))
+            continue
+            
+        # A. 상대방을 따내 승리/캡처하는 수
+        if is_capture:
+            score += 50000
+            
+        # B. 내 위험한 돌들을 살리는 수 (Escape)
+        elif move in danger_liberties:
+            # 착수 후 내 돌들의 최소 자유도가 증가했는지 확인
+            next_g = get_group(next_state.board, move[0], move[1])
+            next_libs = get_liberties(next_state.board, next_g)
+            if len(next_libs) > 2:
+                score += 15000 # 확실히 탈출 성공
+            else:
+                score += 5000  # 연명 시도
+                
+        # C. 상대방을 단수(Atari) 치는 수
+        # 방금 둔 자리 주변에 상대 돌이 있는지 보고, 그 상대 그룹의 자유도가 1로 조여졌는지 판단
+        if not is_capture:
+            opp_groups_checked = set()
+            is_atari = False
+            for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nr, nc = move[0] + dr, move[1] + dc
+                if 0 <= nr < board.size and 0 <= nc < board.size:
+                    if next_state.board.get(nr, nc) == opp_color and (nr, nc) not in opp_groups_checked:
+                        g = get_group(next_state.board, nr, nc)
+                        opp_groups_checked.update(g)
+                        libs = get_liberties(next_state.board, g)
+                        if len(libs) == 1:
+                            is_atari = True
+                            break
+            if is_atari:
+                score += 10000
+
+        scored_moves.append((move, score))
+
+    # 점수 내림차순 정렬 (항상 최선수를 먼저 탐색하게 함)
+    scored_moves.sort(key=lambda x: x[1], reverse=True)
+    
+    ordered = [m for m, _ in scored_moves]
+    if best_move and best_move in legal_moves:
+        ordered.insert(0, best_move)
+
+    return ordered
 
 
 def copy_game_state(game_state):
@@ -81,6 +183,34 @@ ALL_CELLS_SORTED = sorted(
     [(r, c) for r in range(9) for c in range(9)],
     key=lambda coord: abs(coord[0] - 4) + abs(coord[1] - 4)
 )
+
+def get_min_lib_info(board, player):
+    """지정된 플레이어의 모든 돌 그룹을 순회하여 최소 자유도, 최소 자유도 그룹의 활로 좌표 세트, 단수(Atari) 그룹 개수를 반환합니다."""
+    from engine.capture import get_group, get_liberties
+    
+    visited = set()
+    min_lib = 99
+    min_lib_coords = set()
+    atari_groups_count = 0
+    
+    for r in range(board.size):
+        for c in range(board.size):
+            if board.get(r, c) == player and (r, c) not in visited:
+                g = get_group(board, r, c)
+                visited.update(g)
+                libs = get_liberties(board, g)
+                num_libs = len(libs)
+                
+                if num_libs < min_lib:
+                    min_lib = num_libs
+                    min_lib_coords = set(libs)
+                elif num_libs == min_lib:
+                    min_lib_coords.update(libs)
+                    
+                if num_libs == 1:
+                    atari_groups_count += 1
+                    
+    return min_lib, min_lib_coords, atari_groups_count
 
 def get_legal_moves(game_state):
     """현재 보드 상태에서 착수 가능한 모든 합법 수 좌표 목록 및 'pass' 행동을 반환합니다.
@@ -110,14 +240,14 @@ def get_legal_moves(game_state):
     # 마지막으로 pass를 탐색 후보에 추가
     moves.append("pass")
 
-    # 수정 3: 강제 후보 필터링 적용 (위험 탈출 수 강제)
-    if not getattr(game_state, "is_copy", False) and game_state.current_player == ORANGE:
-        from ai.evaluation import evaluate_detailed
-        details = evaluate_detailed(game_state.board, game_state.current_player)
-        current_min_lib = details.get("my_min_liberty", 99)
+    # 강제 후보 필터링 적용 (위험 탈출 수 강제 - 양방 플레이어 모두에 적용하여 전술 일관성 확보)
+    if not getattr(game_state, "is_copy", False):
+        current_player = game_state.current_player
+        
+        current_min_lib, my_min_lib_coords, _ = get_min_lib_info(game_state.board, current_player)
 
         # ----------------- [1단계: 최상위 공격 필터링] -----------------
-        # 내 수비 상태와 무관하게, 즉시 상대 돌을 캡처하거나 양단수를 치는 찬스가 있다면 즉각 공격을 감행
+        # 즉시 상대 돌을 캡처하거나 양단수를 치는 찬스가 있다면 즉각 공격을 감행
         capture_moves = []
         double_atari_moves = []
         atari_moves = []
@@ -129,22 +259,22 @@ def get_legal_moves(game_state):
                 continue
             next_state = copy_game_state(game_state)
             try:
-                next_state.play_move(move[0], move[1])
+                # play_move는 캡처 시 True 반환
+                is_capture = next_state.play_move(move[0], move[1])
             except ValueError:
                 continue
             
-            # 상대방 기준 평가
-            next_details = evaluate_detailed(next_state.board, game_state.current_player)
-            opp_min_lib = next_details.get("opp_min_liberty", 99)
-            opp_atari_groups = next_details.get("opp_atari_groups", 0)
-            
             # A. 즉시 캡처 (게임 승리)
-            if next_state.game_over and next_state.winner == game_state.current_player:
+            if next_state.game_over and next_state.winner == current_player:
                 capture_moves.append(move)
-            # B. 양단수 (Double Atari)
+                continue
+                
+            opp_min_lib, _, opp_atari_groups = get_min_lib_info(next_state.board, opponent)
+            
+            if is_capture:
+                capture_moves.append(move)
             elif opp_atari_groups >= 2:
                 double_atari_moves.append(move)
-            # C. 일반 단수 (Atari)
             elif opp_min_lib == 1:
                 atari_moves.append(move)
             else:
@@ -161,9 +291,6 @@ def get_legal_moves(game_state):
             filtered_moves = []
             really_safe_moves = []
             
-            # 대마의 인접 활로 좌표 세트 확보
-            my_min_lib_coords = details.get("my_min_liberty_coords", set())
-            
             # 루프를 돌 대상 수순을 대마의 인접 활로 좌표로 한정 (없으면 폴백으로 전체 moves)
             target_moves = [m for m in moves if m in my_min_lib_coords] if my_min_lib_coords else moves
             
@@ -177,11 +304,18 @@ def get_legal_moves(game_state):
                         next_state.play_move(move[0], move[1])
                     except ValueError:
                         continue
-                    next_details = evaluate_detailed(next_state.board, game_state.current_player)
-                    next_min_lib = next_details.get("my_min_liberty", 99)
+                    next_min_lib, _, _ = get_min_lib_info(next_state.board, current_player)
                     if next_min_lib > 1:
                         filtered_moves.append(move)
-                        if next_details.get("my_min_lib_fl3", 3) > 0:
+                        
+                        # FL3 판단을 위한 최소 호출
+                        grid_flat = next_state.board.grid[0] + next_state.board.grid[1] + next_state.board.grid[2] + next_state.board.grid[3] + next_state.board.grid[4] + next_state.board.grid[5] + next_state.board.grid[6] + next_state.board.grid[7] + next_state.board.grid[8]
+                        from engine.capture import get_group
+                        g = get_group(next_state.board, move[0], move[1])
+                        group_set = frozenset([r*9 + c for r, c in g])
+                        from ai.evaluation import get_future_liberty_risk_flat
+                        _, _, fl3 = get_future_liberty_risk_flat(grid_flat, group_set, current_player, next_min_lib)
+                        if fl3 > 0:
                             really_safe_moves.append(move)
                 
                 # 2단계: 1단계가 없다면, 자유도 1로 연명이라도 하는 수순 탐색 (선 뻗기 등 수용)
@@ -194,11 +328,17 @@ def get_legal_moves(game_state):
                             next_state.play_move(move[0], move[1])
                         except ValueError:
                             continue
-                        next_details = evaluate_detailed(next_state.board, game_state.current_player)
-                        next_min_lib = next_details.get("my_min_liberty", 99)
+                        next_min_lib, _, _ = get_min_lib_info(next_state.board, current_player)
                         if next_min_lib == 1:
                             filtered_moves.append(move)
-                            if next_details.get("my_min_lib_fl3", 3) > 0:
+                            
+                            grid_flat = next_state.board.grid[0] + next_state.board.grid[1] + next_state.board.grid[2] + next_state.board.grid[3] + next_state.board.grid[4] + next_state.board.grid[5] + next_state.board.grid[6] + next_state.board.grid[7] + next_state.board.grid[8]
+                            from engine.capture import get_group
+                            g = get_group(next_state.board, move[0], move[1])
+                            group_set = frozenset([r*9 + c for r, c in g])
+                            from ai.evaluation import get_future_liberty_risk_flat
+                            _, _, fl3 = get_future_liberty_risk_flat(grid_flat, group_set, current_player, next_min_lib)
+                            if fl3 > 0:
                                 really_safe_moves.append(move)
                             
             elif current_min_lib == 2:
@@ -211,11 +351,17 @@ def get_legal_moves(game_state):
                         next_state.play_move(move[0], move[1])
                     except ValueError:
                         continue
-                    next_details = evaluate_detailed(next_state.board, game_state.current_player)
-                    next_min_lib = next_details.get("my_min_liberty", 99)
+                    next_min_lib, _, _ = get_min_lib_info(next_state.board, current_player)
                     if next_min_lib >= 2:
                         filtered_moves.append(move)
-                        if next_details.get("my_min_lib_fl3", 3) > 0:
+                        
+                        grid_flat = next_state.board.grid[0] + next_state.board.grid[1] + next_state.board.grid[2] + next_state.board.grid[3] + next_state.board.grid[4] + next_state.board.grid[5] + next_state.board.grid[6] + next_state.board.grid[7] + next_state.board.grid[8]
+                        from engine.capture import get_group
+                        g = get_group(next_state.board, move[0], move[1])
+                        group_set = frozenset([r*9 + c for r, c in g])
+                        from ai.evaluation import get_future_liberty_risk_flat
+                        _, _, fl3 = get_future_liberty_risk_flat(grid_flat, group_set, current_player, next_min_lib)
+                        if fl3 > 0:
                             really_safe_moves.append(move)
             
             if filtered_moves:
@@ -239,6 +385,8 @@ def find_best_move(game_state, depth=2):
     """
     from ai.evaluation import clear_future_liberty_cache
     clear_future_liberty_cache()
+    from engine.safe_groups import clear_empty_regions_cache
+    clear_empty_regions_cache()
     
     target_player = game_state.current_player
 
@@ -346,7 +494,10 @@ def alphabeta(state, depth, alpha, beta, maximizing_player, target_player):
         return val
 
     legal_moves = get_legal_moves(state)
+    legal_moves = order_moves(state, legal_moves, depth, maximizing_player, target_player)
     original_alpha = alpha
+
+    best_move = None
 
     if maximizing_player:
         max_eval = -float("inf")
@@ -363,7 +514,9 @@ def alphabeta(state, depth, alpha, beta, maximizing_player, target_player):
             eval_val = alphabeta(
                 next_state, depth - 1, alpha, beta, False, target_player
             )
-            max_eval = max(max_eval, eval_val)
+            if eval_val > max_eval:
+                max_eval = eval_val
+                best_move = move
             alpha = max(alpha, eval_val)
             if beta <= alpha:
                 STATS["cutoffs"] += 1
@@ -376,7 +529,7 @@ def alphabeta(state, depth, alpha, beta, maximizing_player, target_player):
             flag = LOWERBOUND
         else:
             flag = EXACT
-        store_entry(hash_key, depth, max_eval, flag)
+        store_entry(hash_key, depth, max_eval, flag, best_move)
 
         return max_eval
 
@@ -395,7 +548,9 @@ def alphabeta(state, depth, alpha, beta, maximizing_player, target_player):
             eval_val = alphabeta(
                 next_state, depth - 1, alpha, beta, True, target_player
             )
-            min_eval = min(min_eval, eval_val)
+            if eval_val < min_eval:
+                min_eval = eval_val
+                best_move = move
             beta = min(beta, eval_val)
             if beta <= alpha:
                 STATS["cutoffs"] += 1
@@ -408,6 +563,6 @@ def alphabeta(state, depth, alpha, beta, maximizing_player, target_player):
             flag = LOWERBOUND
         else:
             flag = EXACT
-        store_entry(hash_key, depth, min_eval, flag)
+        store_entry(hash_key, depth, min_eval, flag, best_move)
 
         return min_eval

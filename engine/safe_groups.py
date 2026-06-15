@@ -10,11 +10,28 @@ DIRECTIONS = [
 ]
 
 
+EMPTY_REGIONS_CACHE = {}
+
+
+def clear_empty_regions_cache():
+    EMPTY_REGIONS_CACHE.clear()
+
+
+GET_EMPTY_REGIONS_CALL_COUNT = 0
+
+
 def get_empty_regions(board):
     """보드의 모든 빈 영역(EMPTY)들을 BFS로 찾아 반환합니다.
 
     반환: list of (region_set, adjacent_colors_set, adjacent_stones_set, is_four_edge_bool)
     """
+    global GET_EMPTY_REGIONS_CALL_COUNT
+    GET_EMPTY_REGIONS_CALL_COUNT += 1
+
+    board_tuple = tuple(tuple(row) for row in board.grid)
+    if board_tuple in EMPTY_REGIONS_CACHE:
+        return EMPTY_REGIONS_CACHE[board_tuple]
+
     size = board.size
     visited = set()
     regions = []
@@ -70,15 +87,18 @@ def get_empty_regions(board):
                     (region, adjacent_colors, adjacent_stones, is_four_edge)
                 )
 
+    EMPTY_REGIONS_CACHE[board_tuple] = regions
     return regions
 
 
-def is_safe_group(board, group, player):
+
+def is_safe_group(board, group, player, regions=None):
     """주어진 player의 돌 그룹(group)이 안전 그룹인지 판별합니다.
 
     해당 그룹이 이미 완성된 자기 영토(Four Edge Rule 미적용 영토)를 둘러싸고 있다면 True를 반환합니다.
     """
-    regions = get_empty_regions(board)
+    if regions is None:
+        regions = get_empty_regions(board)
 
     for region, adj_colors, adj_stones, is_four_edge in regions:
         # Four Edge Rule에 걸린 영토는 정식 영토가 아니므로 제외

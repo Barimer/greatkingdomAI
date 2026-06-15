@@ -41,30 +41,18 @@ class GameState:
 
         opponent = self.opponent()
 
-        # 상대 영토 내부 착수 금지 규칙 적용
-        from engine.territory import calculate_territory_details
-        from engine.board import BLUE, ORANGE
-        _, _, blue_coords, orange_coords = calculate_territory_details(self.board)
-        opponent_territory = set(orange_coords) if opponent == ORANGE else set(blue_coords)
+        # 상대 영토 내부 착수 금지 규칙 적용 (캐싱 활용)
+        if hasattr(self, "_opponent_territory") and self._opponent_territory is not None:
+            opponent_territory = self._opponent_territory
+        else:
+            from engine.territory import calculate_territory_details
+            from engine.board import BLUE, ORANGE
+            _, _, blue_coords, orange_coords = calculate_territory_details(self.board)
+            opponent_territory = set(orange_coords) if opponent == ORANGE else set(blue_coords)
+            self._opponent_territory = opponent_territory
+
         if (r, c) in opponent_territory:
             raise ValueError("Cannot play inside opponent's territory")
-
-        # 착수하기 전 보드 상태에서 상대방의 안전 그룹을 미리 수집
-        safe_stones = set()
-        checked_pre = set()
-
-        for rr in range(self.board.size):
-            for cc in range(self.board.size):
-                if self.board.get(rr, cc) != opponent:
-                    continue
-                if (rr, cc) in checked_pre:
-                    continue
-
-                group = get_group(self.board, rr, cc)
-                checked_pre.update(group)
-
-                if is_safe_group(self.board, group, opponent):
-                    safe_stones.update(group)
 
         # 이제 착수를 수행합니다.
         from ai.zobrist import ZOBRIST_TABLE, ZOBRIST_PLAYER
@@ -83,6 +71,7 @@ class GameState:
 
         captured = []
         checked = set()
+        candidates_to_capture = []
 
         for rr in range(self.board.size):
             for cc in range(self.board.size):
@@ -98,17 +87,29 @@ class GameState:
                 )
                 checked.update(group)
 
-                # 착수 전에 안전 그룹에 해당했던 돌들은 캡처 대상에서 영구 배제
-                if group.issubset(safe_stones):
-                    continue
-
                 libs = get_liberties(
                     self.board,
                     group
                 )
 
                 if len(libs) == 0:
-                    captured.extend(group)
+                    candidates_to_capture.append(group)
+
+        if candidates_to_capture:
+            # 착수 전 상태로 임시 복구하여 안전 그룹 여부를 판단
+            self.board.remove(r, c)
+
+            from engine.safe_groups import get_empty_regions, is_safe_group
+            pre_regions = get_empty_regions(self.board)
+
+            for group in candidates_to_capture:
+                if is_safe_group(self.board, group, opponent, regions=pre_regions):
+                    # 착수 전에 안전 그룹에 해당했던 돌들은 캡처 대상에서 영구 배제
+                    continue
+                captured.extend(group)
+
+            # 착수 상태 복구
+            self.board.place(r, c, self.current_player)
 
         if captured:
 

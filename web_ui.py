@@ -10,6 +10,20 @@ from engine.board import BLUE, ORANGE, EMPTY, NEUTRAL
 from ai.minimax import find_best_move, LAST_AI_DECISION
 from engine.territory import calculate_territory
 from streamlit_image_coordinates import streamlit_image_coordinates
+import torch
+import numpy as np
+from model_v2 import PolicyNetworkV2
+from ai.hybrid import board_to_tensor, get_move_idx, get_move_from_idx
+
+@st.cache_resource
+def get_cached_policy_model(model_path):
+    device = torch.device("cpu")
+    model = PolicyNetworkV2().to(device)
+    if os.path.exists(model_path):
+        model.load_state_dict(torch.load(model_path, map_location=device))
+    model.eval()
+    return model
+
 
 # 페이지 설정
 st.set_page_config(
@@ -320,6 +334,18 @@ st.sidebar.header("⚙️ 컨트롤 타워")
 if st.sidebar.button("🔄 게임 리셋 (새 대국 시작)", use_container_width=True, disabled=is_ai_turn):
     reset_game()
 
+# 상대 AI 유형 선택
+if "opponent_type" not in st.session_state:
+    st.session_state.opponent_type = "🧠 policy_rl_v2_e3 (Champion)"
+
+st.session_state.opponent_type = st.sidebar.selectbox(
+    "🤖 상대 AI 유형 선택",
+    ["🔵 Depth 3 Minimax", "🧠 policy_rl_v2_e3 (Champion)", "🧠 policy_rl_v3_e2 (V3 Best)"],
+    index=["🔵 Depth 3 Minimax", "🧠 policy_rl_v2_e3 (Champion)", "🧠 policy_rl_v3_e2 (V3 Best)"].index(st.session_state.opponent_type),
+    disabled=is_ai_turn
+)
+
+
 # 영토 시각화 체크박스 (ON/OFF)
 st.session_state.show_territory = st.sidebar.toggle(
     "🗺️ 영토 분석 모드 시각화 (ON/OFF)", 
@@ -569,72 +595,130 @@ if not game.game_over and game.current_player == ORANGE:
     status_placeholder = ai_status_placeholder
     progress_bar = ai_progress_bar_placeholder
     
-    with status_placeholder.container():
-        st.markdown("##### 🤖 AI 수읽기 중 (Depth 3)...")
-        info_text = st.empty()
-        
-    from ai.minimax import get_legal_moves, copy_game_state, alphabeta, LAST_AI_DECISION
-    log_state("C_AI_BEFORE")
+    opponent = st.session_state.opponent_type
     
-    legal_moves = get_legal_moves(game)
-    move_scores = []
-    alpha = -float("inf")
-    beta = float("inf")
-    target_player = ORANGE
-    depth = 3
-    
-    start_time = time.time()
-    total_moves = len(legal_moves)
-    
-    for idx, move in enumerate(legal_moves):
-        # 경과 및 남은 시간 계산
-        elapsed = time.time() - start_time
-        if idx > 0:
-            avg_time = elapsed / idx
-            eta = avg_time * (total_moves - idx)
-            info_text.caption(
-                f"**진행률**: {idx}/{total_moves} ({int(idx/total_moves*100)}%) | "
-                f"**경과 시간**: {elapsed:.1f}초 | "
-                f"**예상 남은 시간**: {eta:.1f}초"
-            )
-        else:
-            info_text.caption(
-                f"**진행률**: {idx}/{total_moves} (0%) | "
-                f"**경과 시간**: {elapsed:.1f}초 | "
-                f"**예상 남은 시간**: 계산 중..."
-            )
+    if opponent == "🔵 Depth 3 Minimax":
+        with status_placeholder.container():
+            st.markdown("##### 🤖 AI 수읽기 중 (Depth 3)...")
+            info_text = st.empty()
             
-        progress_bar.progress(float(idx / total_moves))
+        from ai.minimax import get_legal_moves, copy_game_state, alphabeta, LAST_AI_DECISION
+        log_state("C_AI_BEFORE")
         
-        next_state = copy_game_state(game)
-        try:
-            if move == "pass":
-                next_state.play_pass()
+        legal_moves = get_legal_moves(game)
+        move_scores = []
+        alpha = -float("inf")
+        beta = float("inf")
+        target_player = ORANGE
+        depth = 3
+        
+        start_time = time.time()
+        total_moves = len(legal_moves)
+        
+        for idx, move in enumerate(legal_moves):
+            # 경과 및 남은 시간 계산
+            elapsed = time.time() - start_time
+            if idx > 0:
+                avg_time = elapsed / idx
+                eta = avg_time * (total_moves - idx)
+                info_text.caption(
+                    f"**진행률**: {idx}/{total_moves} ({int(idx/total_moves*100)}%) | "
+                    f"**경과 시간**: {elapsed:.1f}초 | "
+                    f"**예상 남은 시간**: {eta:.1f}초"
+                )
             else:
-                next_state.play_move(move[0], move[1])
-        except ValueError:
-            continue
+                info_text.caption(
+                    f"**진행률**: {idx}/{total_moves} (0%) | "
+                    f"**경과 시간**: {elapsed:.1f}초 | "
+                    f"**예상 남은 시간**: 계산 중..."
+                )
+                
+            progress_bar.progress(float(idx / total_moves))
             
-        score = alphabeta(next_state, depth - 1, alpha, beta, False, target_player)
-        move_scores.append((move, score))
-        alpha = max(alpha, score)
+            next_state = copy_game_state(game)
+            try:
+                if move == "pass":
+                    next_state.play_pass()
+                else:
+                    next_state.play_move(move[0], move[1])
+            except ValueError:
+                continue
+                
+            score = alphabeta(next_state, depth - 1, alpha, beta, False, target_player)
+            move_scores.append((move, score))
+            alpha = max(alpha, score)
+            
+        progress_bar.progress(1.0)
+        status_placeholder.empty()
+        progress_bar.empty()
         
-    progress_bar.progress(1.0)
-    status_placeholder.empty()
-    progress_bar.empty()
-    
-    if move_scores:
-        move_scores.sort(key=lambda x: x[1], reverse=True)
-        best_score = move_scores[0][1]
-        best_candidates = [move for move, score in move_scores if abs(score - best_score) < 1e-7]
-        ai_move = random.choice(best_candidates)
-        
-        # UI 연동용 글로벌 변수에 결정 정보 기록
-        LAST_AI_DECISION["move"] = ai_move
-        LAST_AI_DECISION["score"] = best_score
-        LAST_AI_DECISION["depth"] = depth
+        if move_scores:
+            move_scores.sort(key=lambda x: x[1], reverse=True)
+            best_score = move_scores[0][1]
+            best_candidates = [move for move, score in move_scores if abs(score - best_score) < 1e-7]
+            ai_move = random.choice(best_candidates)
+            
+            # UI 연동용 글로벌 변수에 결정 정보 기록
+            LAST_AI_DECISION["move"] = ai_move
+            LAST_AI_DECISION["score"] = best_score
+            LAST_AI_DECISION["depth"] = depth
+        else:
+            ai_move = "pass"
+            
     else:
-        ai_move = "pass"
+        # 신경망(Neural Network) 정책망 추론
+        with status_placeholder.container():
+            st.markdown("##### 🧠 AI 정책망 추론 중...")
+            
+        model_filename = "policy_rl_v2_e3.pt" if "v2" in opponent else "policy_rl_v3_e2.pt"
+        model_path = os.path.join(r"C:\Users\User\source\repos\greatkingdomAI", model_filename)
+        
+        try:
+            model = get_cached_policy_model(model_path)
+            
+            from ai.minimax import get_legal_moves, LAST_AI_DECISION
+            legal_moves = get_legal_moves(game)
+            
+            if not legal_moves:
+                ai_move = "pass"
+                best_prob = 1.0
+            else:
+                device = torch.device("cpu")
+                state_np = board_to_tensor(game.board, game.current_player)
+                state_tensor = torch.tensor(state_np, dtype=torch.float32).unsqueeze(0).to(device)
+                
+                with torch.no_grad():
+                    logits = model(state_tensor)
+                    probs = torch.softmax(logits, dim=1).squeeze(0).cpu().numpy()
+                    
+                legal_indices = [get_move_idx(m) for m in legal_moves]
+                legal_probs = probs[legal_indices]
+                
+                if np.sum(legal_probs) > 0:
+                    legal_probs /= np.sum(legal_probs)
+                    best_idx = np.argmax(legal_probs)
+                    chosen_idx = legal_indices[best_idx]
+                    ai_move = get_move_from_idx(chosen_idx)
+                    best_prob = probs[chosen_idx]
+                else:
+                    ai_move = get_move_from_idx(legal_indices[0])
+                    best_prob = probs[legal_indices[0]]
+                    
+            LAST_AI_DECISION["move"] = ai_move
+            LAST_AI_DECISION["score"] = float(best_prob)  # 확률값을 평가 점수로 시각화
+            LAST_AI_DECISION["depth"] = "Neural Network"
+            
+            time.sleep(0.3)  # UX 편의상 약간의 딜레이
+        except Exception as e:
+            st.error(f"모델 로딩 또는 추론 오류: {e}")
+            with open("analysis/debug_log.txt", "a", encoding="utf-8") as f:
+                f.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] EXCEPTION IN AI: {e}\n")
+            import traceback
+            with open("analysis/debug_log.txt", "a", encoding="utf-8") as f:
+                traceback.print_exc(file=f)
+            ai_move = "pass"
+            
+        status_placeholder.empty()
         
     if ai_move == "pass":
         game.play_pass()
@@ -652,3 +736,4 @@ if not game.game_over and game.current_player == ORANGE:
     log_state("D_AI_AFTER")
     st.session_state.preview_coord = None
     st.rerun()
+

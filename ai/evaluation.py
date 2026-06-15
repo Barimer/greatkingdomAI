@@ -33,11 +33,13 @@ IS_RIGHT = [idx % 9 == 8 for idx in range(81)]
 
 # 미래 활로 위험 분석용 글로벌 캐시 및 거리 테이블
 FUTURE_LIBERTY_CACHE = {}
+_EVALUATE_CACHE = {}
 ENABLE_FLR = True
 
 def clear_future_liberty_cache():
-    """매 수 결정 전에 미래 활로 캐시를 초기화합니다."""
+    """매 수 결정 전에 미래 활로 캐시와 평가 캐시를 초기화합니다."""
     FUTURE_LIBERTY_CACHE.clear()
+    _EVALUATE_CACHE.clear()
 
 MANHATTAN_DIST = {}
 for i in range(81):
@@ -169,21 +171,20 @@ def future_lib_minimax_flat(grid_flat, depth, alpha, beta, is_maximizing, group_
         return min_val
 
 def get_future_liberty_risk_flat(grid_flat, group_for_tracking, player, num_libs):
+    if not ENABLE_FLR:
+        return num_libs, num_libs, num_libs
+
     if num_libs == 1:
         return 0, 0, 0
     elif num_libs == 2:
-        fl1 = future_lib_minimax_flat(grid_flat, 1, -float('inf'), float('inf'), False, group_for_tracking, player)
-        fl2 = future_lib_minimax_flat(grid_flat, 3, -float('inf'), float('inf'), False, group_for_tracking, player)
-        if fl2 <= 1:
-            fl3 = future_lib_minimax_flat(grid_flat, 5, -float('inf'), float('inf'), False, group_for_tracking, player)
-        else:
-            fl3 = fl2
-        return fl1, fl2, fl3
-    else: # num_libs == 3
+        # 최대 탐색 깊이를 3으로 제한 (연산 폭발을 만드는 깊이 5 탐색 원천 차단)
         fl1 = future_lib_minimax_flat(grid_flat, 1, -float('inf'), float('inf'), False, group_for_tracking, player)
         fl2 = future_lib_minimax_flat(grid_flat, 3, -float('inf'), float('inf'), False, group_for_tracking, player)
         fl3 = fl2
         return fl1, fl2, fl3
+    else: # num_libs >= 3
+        # 자유도 3 이상의 안전한 상태에서는 미래 위험 탐색을 100% 생략하여 연산 가속
+        return num_libs, num_libs, num_libs
 
 _FLAT_TERRITORY_CACHE = {}
 
@@ -463,6 +464,13 @@ def evaluate_detailed(board, player):
     }
 
 def evaluate(board, player):
-    """단순 총점만 반환하는 기존 호환성용 평가 래퍼 함수입니다."""
+    """단순 총점만 반환하는 기존 호환성용 평가 래퍼 함수입니다. (캐싱 적용)"""
+    grid_flat = board.grid[0] + board.grid[1] + board.grid[2] + board.grid[3] + board.grid[4] + board.grid[5] + board.grid[6] + board.grid[7] + board.grid[8]
+    cache_key = (tuple(grid_flat), player)
+    if cache_key in _EVALUATE_CACHE:
+        return _EVALUATE_CACHE[cache_key]
+
     details = evaluate_detailed(board, player)
-    return details["Total"]
+    val = details["Total"]
+    _EVALUATE_CACHE[cache_key] = val
+    return val
